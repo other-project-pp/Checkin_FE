@@ -23,11 +23,15 @@ export async function getAbsence() {
 
 export async function getDashboard(shiftId?: string) {
   const params = shiftId ? { shiftId } : undefined;
-  return api.get("/admin/dashboard", { params }).then((r) => r.data);
+  const res = api.get("/admin/dashboard", { params }).then((r) => r.data);
+  console.log("res", res);
+  return res;
 }
 
-export async function getDaily(shiftId?: string) {
-  const params = shiftId ? { shiftId } : undefined;
+export async function getDaily(shiftId?: string, date?: string) {
+  const params: any = {}; 
+  if (shiftId) params.shiftId = shiftId;
+  if (date) params.date = date;
   return api.get("/admin/daily", { params }).then((r) => r.data);
 }
 

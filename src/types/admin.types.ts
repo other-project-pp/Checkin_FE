@@ -1,4 +1,18 @@
-export type RoundStatus = "success" | "pending" | "late" | "absent" | "none";
+export type RoundStatus =
+  | "success"
+  | "pending"
+  | "late"
+  | "absent"
+  | "none"
+  | "X"
+  | "XX"
+  | "TX"
+  | "กิจ"
+  | "ป่วย"
+  | "PN"
+  | "KP"
+  | "CL"
+  | "NV";
 
 // Latest Page
 export type LatestRow = {
@@ -83,6 +97,7 @@ export type DashboardResponse = {
   totalUsers: number;
   shifts: DashShift[];
   rows: DashRow[];
+  subCounts?: SubCounts;
 };
 
 //Daily
@@ -110,4 +125,17 @@ export type DailyResponse = {
   totalUsers: number;
   shifts: DailyShift[];
   rows: DailyRow[];
+  subCounts?: SubCounts;
+};
+
+// Sub Counts
+export type SubCounts = {
+  submitted: number;
+  notSubmitted: number;
+  late: number;
+  notPaid: number;
+  offTotal: number;
+  off: { X: number; XX: number; TX: number; personal: number; sick: number; PN: number };
+  KP: number;
+  CL: number;
 };

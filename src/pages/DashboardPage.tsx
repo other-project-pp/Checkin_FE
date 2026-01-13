@@ -242,6 +242,22 @@ export default function DashboardPage() {
             clickable
           />
         ))}
+
+        {data.subCounts && selectedShiftId && (
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Chip label={`ส่งแล้ว: ${data.subCounts.submitted}`} color="success" />
+            <Chip label={`ยังไม่ส่ง: ${data.subCounts.notSubmitted}`} variant="outlined" />
+            <Chip label={`สาย: ${data.subCounts.late}`} color="warning" />
+            <Chip label={`ไม่ได้รับค่าแรง: ${data.subCounts.notPaid}`} color="error" />
+            <Chip
+              label={`หยุด/ลา: ${data.subCounts.offTotal} (X:${data.subCounts.off.X}, XX:${data.subCounts.off.XX}, TX:${data.subCounts.off.TX}, กิจ:${data.subCounts.off.personal}, ป่วย:${data.subCounts.off.sick}, PN:${data.subCounts.off.PN})`}
+              color="info"
+              variant="outlined"
+            />
+            <Chip label={`ขาดงาน(KP): ${data.subCounts.KP}`} variant="outlined" />
+            <Chip label={`ยังไม่เริ่มงาน(CL): ${data.subCounts.CL}`} variant="outlined" />
+          </Stack>
+        )}
       </Stack>
 
       {/* (3) Table */}

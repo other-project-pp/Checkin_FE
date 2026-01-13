@@ -219,7 +219,7 @@ export default function LatestPage() {
         <Chip label={`Success: ${data.counts.success}`} color="success" />
         <Chip label={`Pending: ${data.counts.pending}`} variant="outlined" />
         <Chip label={`Late: ${data.counts.late}`} color="warning" />
-        <Chip label={`Absent: ${data.counts.absent}`} color="error" />
+        <Chip label={`ไม่ได้รับค่าแรง: ${data.counts.absent}`} color="error" />
       </Stack>
 
       <TableContainer

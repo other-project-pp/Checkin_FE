@@ -13,12 +13,18 @@ import {
   TableHead,
   TableRow,
   Typography,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select
 } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import StatusChip from "../components/common/StatusChip";
 import ImageThumbStack from "../components/common/ImageThumbStack";
 import { getDaily } from "../services/adminservice";
 import { type DailyResponse } from "../types/admin.types";
+
+const ymd = (d: Date) => d.toLocaleDateString("en-CA");
 
 const fmtNow = (d: Date) =>
   d.toLocaleString("th-TH", {
@@ -45,6 +51,20 @@ export default function DailyPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  const [selectedDate, setSelectedDate] = useState(() => ymd(new Date()));
+
+  const dateOptions = (() => {
+    const arr: { value: string; label: string }[] = [];
+    for (let i = 0; i <= 3; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const v = ymd(d);
+      const label = i === 0 ? `วันนี้ (${v})` : `${i} วันที่แล้ว (${v})`;
+      arr.push({ value: v, label });
+    }
+    return arr;
+  })();
+
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
@@ -54,7 +74,7 @@ export default function DailyPage() {
     setLoading(true);
     setErr(null);
     try {
-      const d = (await getDaily(sid || undefined)) as DailyResponse;
+      const d = (await getDaily(sid || undefined, selectedDate)) as DailyResponse;
       setData(d);
     } catch (e: any) {
       setErr(e?.message || "Failed to load");
@@ -62,7 +82,7 @@ export default function DailyPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedDate]);
 
   useEffect(() => {
     load(selectedShiftId);
@@ -80,7 +100,8 @@ export default function DailyPage() {
         สรุปรายวัน • วันที่/เวลา: {fmtNow(now)}
       </Alert>
 
-      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }} justifyContent="space-between">
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
         <Chip
           label={`ทั้งหมด (${data.totalUsers})`}
           color={selectedShiftId ? "default" : "primary"}
@@ -96,6 +117,39 @@ export default function DailyPage() {
             clickable
           />
         ))}
+        </Stack>
+
+        <FormControl size="small" sx={{ minWidth: 220 }}>
+          <InputLabel>เลือกวันที่</InputLabel>
+          <Select
+            label="เลือกวันที่"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(String(e.target.value))}
+          >
+            {dateOptions.map((o) => (
+              <MenuItem key={o.value} value={o.value}>
+                {o.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Stack>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }} justifyContent="space-between">
+        {data.subCounts && selectedShiftId && (
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Chip label={`ส่งแล้ว: ${data.subCounts.submitted}`} color="success" />
+            <Chip label={`ยังไม่ส่ง: ${data.subCounts.notSubmitted}`} variant="outlined" />
+            <Chip label={`สาย: ${data.subCounts.late}`} color="warning" />
+            <Chip label={`ไม่ได้รับค่าแรง: ${data.subCounts.notPaid}`} color="error" />
+            <Chip
+              label={`หยุด/ลา: ${data.subCounts.offTotal} (X:${data.subCounts.off.X}, XX:${data.subCounts.off.XX}, TX:${data.subCounts.off.TX}, กิจ:${data.subCounts.off.personal}, ป่วย:${data.subCounts.off.sick}, PN:${data.subCounts.off.PN})`}
+              color="info"
+              variant="outlined"
+            />
+            <Chip label={`ขาดงาน(KP): ${data.subCounts.KP}`} variant="outlined" />
+            <Chip label={`ยังไม่เริ่มงาน(CL): ${data.subCounts.CL}`} variant="outlined" />
+          </Stack>
+        )}
       </Stack>
 
       <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, overflowX: "auto" }}>

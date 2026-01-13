@@ -5,7 +5,7 @@ export const api = axios.create({
   headers: {
     "ngrok-skip-browser-warning": "1",
   },
-  timeout: 20000,
+  timeout: 25000,
 });
 
 // optional: if you later add whitelist token/header etc.
