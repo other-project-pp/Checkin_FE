@@ -139,3 +139,42 @@ export type SubCounts = {
   KP: number;
   CL: number;
 };
+
+//Checkin Template
+export type CheckinTemplateResponse = {
+  ok: boolean;
+  data: {
+    key: "default";
+    template: string | null;
+    updatedAt: string | null;
+  };
+};
+
+export type UpdateCheckinTemplateResponse = {
+  ok: boolean;
+  data: any;
+};
+
+// ===== Settings: Today Scheduled Rounds =====
+export type ScheduledRoundStatus = "pending" | "sent" | "skipped" | "cancelled" | "error" | string;
+
+export type ScheduledRoundItem = {
+  round: 1 | 2;
+  sendAt: string;       // ISO string
+  windowEndAt: string;  // ISO string
+  status: ScheduledRoundStatus;
+};
+
+export type TodayScheduledRoundsItem = {
+  shiftName: string;
+  sessionDate: string; // "YYYY-MM-DD"
+  rounds: ScheduledRoundItem[];
+};
+
+export interface TodayScheduledRoundsResponse {
+  ok: boolean;
+  date: string;
+  prevDate: string;
+  nextDate: string;
+  days: { date: string; items: TodayScheduledRoundsItem[] }[];
+}

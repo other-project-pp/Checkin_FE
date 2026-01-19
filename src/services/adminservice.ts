@@ -1,5 +1,5 @@
 import { api } from "./api";
-import { type LatestResponse, type CurrentRoundResponse } from "../types/admin.types";
+import { type LatestResponse, type CurrentRoundResponse, type CheckinTemplateResponse, type UpdateCheckinTemplateResponse, type TodayScheduledRoundsResponse } from "../types/admin.types";
 
 export async function getLatest(shiftId: string) {
   const res = await api.get<LatestResponse>("/admin/latest", {
@@ -47,3 +47,19 @@ export async function setTelegramHook(body: {
 export async function getCheckinImages(checkinId: string) {
   return api.get(`/admin/checkins/${checkinId}/images`).then((r) => r.data as { ok: true; images: string[] });
 }
+
+export async function getCheckinTemplate() {
+  const res = await api.get<CheckinTemplateResponse>("/admin/checkin-template");
+  return res.data;
+}
+
+export async function updateCheckinTemplate(template: string) {
+  const res = await api.put<UpdateCheckinTemplateResponse>("/admin/checkin-template", { template });
+  return res.data;
+}
+
+export async function getTodayScheduledRounds() {
+  const res = await api.get<TodayScheduledRoundsResponse>("/admin/schedule");
+  return res.data;
+}
+
