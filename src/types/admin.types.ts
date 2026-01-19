@@ -76,6 +76,7 @@ export type DashRow = {
   userId: string;
   name: string;
   profileUrl: string | null;
+  department: string | null;
   websiteName: string | null;
   shiftId: string;
   shiftName: string;
@@ -105,6 +106,7 @@ export type DailyRow = {
   userId: string;
   name: string;
   profileUrl: string | null;
+  department: string | null;
   websiteName: string | null;
   shiftId: string;
   shiftName: string;

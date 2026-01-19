@@ -19,6 +19,10 @@ import {
   DialogContent,
   DialogActions,
   Divider,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import StatusChip from "../components/common/StatusChip";
@@ -27,6 +31,16 @@ import { getDashboard, getCheckinImages } from "../services/adminservice";
 import { type DashboardResponse, type RoundStatus, type DashRow  } from "../types/admin.types";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import * as XLSX from "xlsx";
+
+type StatusFilter =
+  | "ALL"
+  | "submitted"
+  | "notSubmitted"
+  | "late"
+  | "notPaid"
+  | "off"
+  | "KP"
+  | "CL";
 
 const fmtNow = (d: Date) =>
   d.toLocaleString("th-TH", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -110,6 +124,8 @@ export default function DashboardPage() {
   const [r2Idx, setR2Idx] = useState(0);
 
   const [compareLoading, setCompareLoading] = useState(false);
+  const [selectedDept, setSelectedDept] = useState<string>("ALL");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
 
   const firstImg = (imgs?: string[] | null) => (imgs && imgs.length ? imgs[0] : null);
 
@@ -117,6 +133,10 @@ export default function DashboardPage() {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  const toggleStatus = (v: StatusFilter) => {
+    setStatusFilter((prev) => (prev === v ? "ALL" : v));
+  };
 
   const load = useCallback(async (sid?: string | null) => {
     setLoading(true);
@@ -135,6 +155,14 @@ export default function DashboardPage() {
   useEffect(() => {
     load(selectedShiftId);
   }, [load, selectedShiftId]);
+
+  useEffect(() => {
+    setSelectedDept("ALL");
+  }, [selectedShiftId]);
+
+  useEffect(() => {
+    setStatusFilter("ALL");
+  }, [selectedShiftId, selectedDept]);
 
   const handleOpenCompare = async (row: DashRow) => {
     setCompareRow(row);
@@ -168,6 +196,46 @@ export default function DashboardPage() {
   };
 
   const rows = data?.rows || [];
+
+  const deptRows = rows.filter((r) => {
+  if (selectedDept === "ALL") return true;
+  return String(r.department || "").toUpperCase() === selectedDept;
+});
+
+// (B) decide current round (same idea as BE: if any user has round2 started, treat as round2)
+const isRealRoundStatus = (s: RoundStatus) =>
+  s === "success" || s === "pending" || s === "late" || s === "absent";
+
+const round2Started = deptRows.some(
+  (r) => isRealRoundStatus(r.round2.status) || !!r.round2.checkinId
+);
+const currentRound = round2Started ? 2 : 1;
+
+const curRound = (r: DashRow) => (currentRound === 2 ? r.round2 : r.round1);
+
+const isOffRow = (r: DashRow) => {
+  if (r.remark === "dayoff" || r.remark === "sick") return true;
+  const s = curRound(r).status;
+  return s === "X" || s === "XX" || s === "TX" || s === "PN" || s === "กิจ" || s === "ป่วย";
+};
+
+const finalRows = deptRows.filter((r) => {
+  if (statusFilter === "ALL") return true;
+
+  const cur = curRound(r);
+  const submitted = !!cur.checkinId;
+
+  if (statusFilter === "submitted") return submitted;
+  if (statusFilter === "late") return cur.status === "late";
+  if (statusFilter === "notSubmitted") return !submitted && cur.status === "pending" && !isOffRow(r);
+  if (statusFilter === "notPaid") return !submitted && cur.status === "absent" && !isOffRow(r);
+
+  if (statusFilter === "off") return isOffRow(r);
+  if (statusFilter === "KP") return cur.status === "KP";
+  if (statusFilter === "CL") return cur.status === "CL";
+
+  return true;
+});
 
   const ThumbRow = ({
     images,
@@ -218,46 +286,106 @@ export default function DashboardPage() {
         <Button
             variant="contained"
             startIcon={<FileDownloadIcon />}
-            onClick={() => exportExcel(rows)}
+            onClick={() => exportExcel(finalRows)}
         >
             ส่งออกไฟล์ Excel
         </Button>
         </Stack>
 
       {/* (2) Shift chips */}
-      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
-        <Chip
-          label={`ทั้งหมด (${data.totalUsers})`}
-          color={selectedShiftId ? "default" : "primary"}
-          onClick={() => setSelectedShiftId(null)}
-          clickable
-        />
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        gap={1}
+        flexWrap="wrap"
+        useFlexGap
+      >
+        {/* RIGHT: department dropdown */}
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel id="dept-select-label">แผนก</InputLabel>
+          <Select
+            labelId="dept-select-label"
+            value={selectedDept}
+            label="แผนก"
+            onChange={(e) => setSelectedDept(String(e.target.value))}
+          >
+            <MenuItem value="ALL">ทั้งหมด</MenuItem>
+            <MenuItem value="789BET">789BET</MenuItem>
+            <MenuItem value="JUN88">JUN88</MenuItem>
+          </Select>
+        </FormControl>
 
-        {data.shifts.map((s) => (
+        {/* LEFT: shift chips + subCounts */}
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
           <Chip
-            key={s.shiftId}
-            label={`${s.shiftName} - ${s.userCount}`}
-            color={selectedShiftId === s.shiftId ? "primary" : "default"}
-            onClick={() => setSelectedShiftId(s.shiftId)}
+            label={`ทั้งหมด (${data.totalUsers})`}
+            color={selectedShiftId ? "default" : "primary"}
+            onClick={() => setSelectedShiftId(null)}
             clickable
           />
-        ))}
 
-        {data.subCounts && selectedShiftId && (
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Chip label={`ส่งแล้ว: ${data.subCounts.submitted}`} color="success" />
-            <Chip label={`ยังไม่ส่ง: ${data.subCounts.notSubmitted}`} variant="outlined" />
-            <Chip label={`สาย: ${data.subCounts.late}`} color="warning" />
-            <Chip label={`ไม่ได้รับค่าแรง: ${data.subCounts.notPaid}`} color="error" />
+          {data.shifts.map((s) => (
             <Chip
-              label={`หยุด/ลา: ${data.subCounts.offTotal} (X:${data.subCounts.off.X}, XX:${data.subCounts.off.XX}, TX:${data.subCounts.off.TX}, กิจ:${data.subCounts.off.personal}, ป่วย:${data.subCounts.off.sick}, PN:${data.subCounts.off.PN})`}
-              color="info"
-              variant="outlined"
+              key={s.shiftId}
+              label={`${s.shiftName} - ${s.userCount}`}
+              color={selectedShiftId === s.shiftId ? "primary" : "default"}
+              onClick={() => setSelectedShiftId(s.shiftId)}
+              clickable
             />
-            <Chip label={`ขาดงาน(KP): ${data.subCounts.KP}`} variant="outlined" />
-            <Chip label={`ยังไม่เริ่มงาน(CL): ${data.subCounts.CL}`} variant="outlined" />
-          </Stack>
-        )}
+          ))}
+
+          {data.subCounts && selectedShiftId && (
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Chip
+                clickable
+                onClick={() => toggleStatus("submitted")}
+                variant={statusFilter === "submitted" ? "filled" : "outlined"}
+                label={`ส่งแล้ว: ${data.subCounts.submitted}`}
+                color="success"
+              />
+              <Chip
+                clickable
+                onClick={() => toggleStatus("notSubmitted")}
+                variant={statusFilter === "notSubmitted" ? "filled" : "outlined"}
+                label={`ยังไม่ส่ง: ${data.subCounts.notSubmitted}`}
+              />
+              <Chip
+                clickable
+                onClick={() => toggleStatus("late")}
+                variant={statusFilter === "late" ? "filled" : "outlined"}
+                label={`สาย: ${data.subCounts.late}`}
+                color="warning"
+              />
+              <Chip
+                clickable
+                onClick={() => toggleStatus("notPaid")}
+                variant={statusFilter === "notPaid" ? "filled" : "outlined"}
+                label={`ไม่ได้รับค่าแรง: ${data.subCounts.notPaid}`}
+                color="error"
+              />
+              <Chip
+                clickable
+                onClick={() => toggleStatus("off")}
+                variant={statusFilter === "off" ? "filled" : "outlined"}
+                label={`หยุด/ลา: ${data.subCounts.offTotal} (X:${data.subCounts.off.X}, XX:${data.subCounts.off.XX}, TX:${data.subCounts.off.TX}, กิจ:${data.subCounts.off.personal}, ป่วย:${data.subCounts.off.sick}, PN:${data.subCounts.off.PN})`}
+                color="info"
+              />
+              <Chip
+                clickable
+                onClick={() => toggleStatus("KP")}
+                variant={statusFilter === "KP" ? "filled" : "outlined"}
+                label={`ขาดงาน(KP): ${data.subCounts.KP}`}
+              />
+              <Chip
+                clickable
+                onClick={() => toggleStatus("CL")}
+                variant={statusFilter === "CL" ? "filled" : "outlined"}
+                label={`ยังไม่เริ่มงาน(CL): ${data.subCounts.CL}`}
+              />
+            </Stack>
+          )}
+        </Stack>
       </Stack>
 
       {/* (3) Table */}
@@ -276,7 +404,7 @@ export default function DashboardPage() {
           </TableHead>
 
           <TableBody>
-            {rows.map((r) => (
+            {finalRows.map((r) => (
               <TableRow key={r.userId} hover>
                 <TableCell sx={{ fontWeight: 900 }}>
                   <Stack direction="row" spacing={1} alignItems="center">
