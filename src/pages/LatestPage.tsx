@@ -13,6 +13,10 @@ import {
   Paper,
   Avatar,
   CircularProgress,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import { useEffect, useState, useCallback, useRef } from "react";
 import StatusChip from "../components/common/StatusChip";
@@ -22,13 +26,22 @@ import { type LatestResponse } from "../types/admin.types";
 import { useAppState } from "../context/AppContext";
 import { getSocket } from "../services/socket";
 
+type StatusFilter = "ALL" | "success" | "pending" | "late" | "absent";
+
 export default function LatestPage() {
   const { activeShiftId, setActiveShiftId } = useAppState();
   const [data, setData] = useState<LatestResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [selectedDept, setSelectedDept] = useState<string>("ALL");
+
   const loadingRef = useRef(false);
+
+  const toggleStatus = (s: StatusFilter) => {
+    setStatusFilter((prev) => (prev === s ? "ALL" : s));
+  };
 
   const fmtHHmm = (iso: string | null | undefined) => {
     if (!iso) return "";
@@ -128,6 +141,14 @@ export default function LatestPage() {
     };
   }, [syncFromCurrentRound]);
 
+  useEffect(() => {
+    setStatusFilter("ALL");
+  }, [data?.meta?.round, activeShiftId]);
+
+  useEffect(() => {
+    setSelectedDept("ALL");
+  }, [activeShiftId]);
+
   // Checkin (patch only the user + counts)
   useEffect(() => {
     const s = getSocket();
@@ -199,6 +220,24 @@ export default function LatestPage() {
     };
   }, [activeShiftId]);
 
+  const currentRound = data?.meta.round === 2 ? 2 : 1;
+  const curRound = (r: any) => (currentRound === 2 ? r.round2 : r.round1);
+
+  const filteredRows = data?.rows.filter((r: any) => {
+    // department filter
+    if (selectedDept !== "ALL") {
+      if (String(r.department || "").toUpperCase() !== selectedDept) return false;
+    }
+
+    // status filter (based on current round)
+    if (statusFilter !== "ALL") {
+      const s = curRound(r)?.status;
+      if (s !== statusFilter) return false;
+    }
+
+    return true;
+  });
+
   if (loading && !data) return <CircularProgress />;
   if (err) return <Alert severity="error">{err}</Alert>;
   if (!data) return <Alert severity="info">ยังไม่มีข้อมูลรอบล่าสุด</Alert>;
@@ -215,11 +254,58 @@ export default function LatestPage() {
         {roundText} - ({timeStart} to {timeEnd})
       </Alert>
 
-      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-        <Chip label={`Success: ${data.counts.success}`} color="success" />
-        <Chip label={`Pending: ${data.counts.pending}`} variant="outlined" />
-        <Chip label={`Late: ${data.counts.late}`} color="warning" />
-        <Chip label={`ไม่ได้รับค่าแรง: ${data.counts.absent}`} color="error" />
+      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center" justifyContent="space-between">
+        {/* left: chips */}
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Chip
+            clickable
+            onClick={() => toggleStatus("success")}
+            variant={statusFilter === "success" ? "filled" : "outlined"}
+            label={`Success: ${data.counts.success}`}
+            color="success"
+          />
+          <Chip
+            clickable
+            onClick={() => toggleStatus("pending")}
+            variant={statusFilter === "pending" ? "filled" : "outlined"}
+            label={`Pending: ${data.counts.pending}`}
+          />
+          <Chip
+            clickable
+            onClick={() => toggleStatus("late")}
+            variant={statusFilter === "late" ? "filled" : "outlined"}
+            label={`Late: ${data.counts.late}`}
+            color="warning"
+          />
+          <Chip
+            clickable
+            onClick={() => toggleStatus("absent")}
+            variant={statusFilter === "absent" ? "filled" : "outlined"}
+            label={`ไม่ได้รับค่าแรง: ${data.counts.absent}`}
+            color="error"
+          />
+          <Chip
+            clickable
+            onClick={() => setStatusFilter("ALL")}
+            variant={statusFilter === "ALL" ? "filled" : "outlined"}
+            label="ทั้งหมด"
+          />
+        </Stack>
+
+        {/* right: department dropdown */}
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel id="dept-select-label">แผนก</InputLabel>
+          <Select
+            labelId="dept-select-label"
+            value={selectedDept}
+            label="แผนก"
+            onChange={(e) => setSelectedDept(String(e.target.value))}
+          >
+            <MenuItem value="ALL">ทั้งหมด</MenuItem>
+            <MenuItem value="789BET">789BET</MenuItem>
+            <MenuItem value="JUN88">JUN88</MenuItem>
+          </Select>
+        </FormControl>
       </Stack>
 
       <TableContainer
@@ -249,7 +335,7 @@ export default function LatestPage() {
           </TableHead>
 
           <TableBody>
-            {data.rows.map((r) => (
+            {filteredRows && filteredRows.map((r) => (
               <TableRow key={r.userId} hover>
                 <TableCell sx={{ fontWeight: 900 }}>
                   <Stack direction="row" spacing={1} alignItems="center">

@@ -13,6 +13,10 @@ import {
   TableHead,
   TableRow,
   Typography,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select
 } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import { getAbsence } from "../services/adminservice";
@@ -37,6 +41,13 @@ export default function AbsencePage() {
   const [data, setData] = useState<AbsenceResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  const [typeFilter, setTypeFilter] = useState<"ALL" | AbsenceType>("ALL");
+  const [selectedDept, setSelectedDept] = useState<string>("ALL");
+
+  const toggleType = (t: "ALL" | AbsenceType) => {
+    setTypeFilter((prev) => (prev === t ? "ALL" : t));
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -64,17 +75,73 @@ export default function AbsencePage() {
     return <Alert severity="info">วันนี้ไม่มีคนลางาน/หยุด</Alert>;
   }
 
+  const filteredRows = (data.rows || []).filter((r) => {
+    if (selectedDept !== "ALL") {
+      if (String(r.department || "").toUpperCase() !== selectedDept) return false;
+    }
+    if (typeFilter !== "ALL") {
+      if (r.type !== typeFilter) return false;
+    }
+    return true;
+  });
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <Alert severity="info" sx={{ fontWeight: 800 }}>
         ลางาน/หยุด • วันที่ {fmtAbsenceDate(data.date)}
       </Alert>
 
-      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-        <Chip label={`หยุด: ${data.counts.dayoff}`} color="warning" />
-        <Chip label={`ป่วย: ${data.counts.sick}`} color="error" />
-        <Chip label={`กิจ: ${data.counts.personal}`} color="info" />
-        <Chip label={`รวม: ${data.rows.length}`} variant="outlined" />
+      <Stack
+        direction="row"
+        spacing={1}
+        flexWrap="wrap"
+        useFlexGap
+        alignItems="center"
+        justifyContent="space-between"
+      >
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Chip
+            clickable
+            onClick={() => toggleType("dayoff")}
+            variant={typeFilter === "dayoff" ? "filled" : "outlined"}
+            label={`หยุด: ${data.counts.dayoff}`}
+            color="warning"
+          />
+          <Chip
+            clickable
+            onClick={() => toggleType("sick")}
+            variant={typeFilter === "sick" ? "filled" : "outlined"}
+            label={`ป่วย: ${data.counts.sick}`}
+            color="error"
+          />
+          <Chip
+            clickable
+            onClick={() => toggleType("personal")}
+            variant={typeFilter === "personal" ? "filled" : "outlined"}
+            label={`กิจ: ${data.counts.personal}`}
+            color="info"
+          />
+          <Chip
+            clickable
+            onClick={() => { setTypeFilter("ALL"); setSelectedDept("ALL"); }}
+            variant={typeFilter === "ALL" && selectedDept === "ALL" ? "filled" : "outlined"}
+            label={`รวม: ${filteredRows.length}`}
+          />
+        </Stack>
+
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel id="dept-select-label">แผนก</InputLabel>
+          <Select
+            labelId="dept-select-label"
+            value={selectedDept}
+            label="แผนก"
+            onChange={(e) => setSelectedDept(String(e.target.value))}
+          >
+            <MenuItem value="ALL">ทั้งหมด</MenuItem>
+            <MenuItem value="789BET">789BET</MenuItem>
+            <MenuItem value="JUN88">JUN88</MenuItem>
+          </Select>
+        </FormControl>
       </Stack>
 
       <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, overflowX: "auto" }}>
@@ -88,7 +155,7 @@ export default function AbsencePage() {
           </TableHead>
 
           <TableBody>
-            {data.rows.map((r) => (
+            {filteredRows.map((r) => (
               <TableRow key={r.userId} hover>
                 <TableCell sx={{ fontWeight: 900 }}>
                   <Stack direction="row" spacing={1} alignItems="center">

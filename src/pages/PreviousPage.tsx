@@ -13,6 +13,10 @@ import {
   Paper,
   Avatar,
   CircularProgress,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import { useCallback, useEffect, useRef, useState } from "react";
 import StatusChip from "../components/common/StatusChip";
@@ -22,11 +26,16 @@ import { getPreviousRound } from "../services/adminservice";
 import { type LatestResponse } from "../types/admin.types";
 import { getSocket } from "../services/socket";
 
+type StatusFilter = "ALL" | "success" | "pending" | "late" | "absent";
+
 export default function PreviousPage() {
   const [shiftId, setShiftId] = useState<string | null>(null);
   const [data, setData] = useState<LatestResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [selectedDept, setSelectedDept] = useState<string>("ALL");
 
   const loadingRef = useRef(false);
 
@@ -39,6 +48,10 @@ export default function PreviousPage() {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  const toggleStatus = (s: StatusFilter) => {
+    setStatusFilter((prev) => (prev === s ? "ALL" : s));
   };
 
   const loadByShift = useCallback(async (sid: string) => {
@@ -111,6 +124,11 @@ export default function PreviousPage() {
     };
   }, [refresh]);
 
+  useEffect(() => {
+    setStatusFilter("ALL");
+    setSelectedDept("ALL");
+  }, [shiftId]);
+
   // patch on checkinUpdated for THIS previous shift
   useEffect(() => {
     const s = getSocket();
@@ -176,6 +194,24 @@ export default function PreviousPage() {
   if (err) return <Alert severity="error">{err}</Alert>;
   if (!data) return <Alert severity="info">ยังไม่มีข้อมูลรอบก่อนหน้า</Alert>;
 
+  const currentRound = data.meta.round === 2 ? 2 : 1;
+  const curRound = (r: any) => (currentRound === 2 ? r.round2 : r.round1);
+
+  const filteredRows = (data.rows || []).filter((r: any) => {
+    // department
+    if (selectedDept !== "ALL") {
+      if (String(r.department || "").toUpperCase() !== selectedDept) return false;
+    }
+
+    // status (based on current round)
+    if (statusFilter !== "ALL") {
+      const s = curRound(r)?.status;
+      if (s !== statusFilter) return false;
+    }
+
+    return true;
+  });
+
   const timeStart = data.meta.startAt ? fmtHHmm(data.meta.startAt) : "-";
   const timeEnd = data.meta.endAt10 ? fmtHHmm(data.meta.endAt10) : "-";
 
@@ -188,11 +224,65 @@ export default function PreviousPage() {
         {roundText} - ({timeStart} to {timeEnd})
       </Alert>
 
-      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-        <Chip label={`Success: ${data.counts.success}`} color="success" />
-        <Chip label={`Pending: ${data.counts.pending}`} variant="outlined" />
-        <Chip label={`Late: ${data.counts.late}`} color="warning" />
-        <Chip label={`Absent: ${data.counts.absent}`} color="error" />
+      <Stack
+        direction="row"
+        spacing={1}
+        flexWrap="wrap"
+        useFlexGap
+        alignItems="center"
+        justifyContent="space-between"
+      >
+        {/* left: status chips */}
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Chip
+            clickable
+            onClick={() => toggleStatus("success")}
+            variant={statusFilter === "success" ? "filled" : "outlined"}
+            label={`Success: ${data.counts.success}`}
+            color="success"
+          />
+          <Chip
+            clickable
+            onClick={() => toggleStatus("pending")}
+            variant={statusFilter === "pending" ? "filled" : "outlined"}
+            label={`Pending: ${data.counts.pending}`}
+          />
+          <Chip
+            clickable
+            onClick={() => toggleStatus("late")}
+            variant={statusFilter === "late" ? "filled" : "outlined"}
+            label={`Late: ${data.counts.late}`}
+            color="warning"
+          />
+          <Chip
+            clickable
+            onClick={() => toggleStatus("absent")}
+            variant={statusFilter === "absent" ? "filled" : "outlined"}
+            label={`Absent: ${data.counts.absent}`}
+            color="error"
+          />
+          <Chip
+            clickable
+            onClick={() => setStatusFilter("ALL")}
+            variant={statusFilter === "ALL" ? "filled" : "outlined"}
+            label="ทั้งหมด"
+          />
+        </Stack>
+
+        {/* right: dept dropdown */}
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel id="dept-select-label">แผนก</InputLabel>
+          <Select
+            labelId="dept-select-label"
+            value={selectedDept}
+            label="แผนก"
+            onChange={(e) => setSelectedDept(String(e.target.value))}
+          >
+            <MenuItem value="ALL">ทั้งหมด</MenuItem>
+            <MenuItem value="789BET">789BET</MenuItem>
+            <MenuItem value="JUN88">JUN88</MenuItem>
+          </Select>
+        </FormControl>
       </Stack>
 
       <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, overflowX: "auto" }}>
@@ -207,7 +297,7 @@ export default function PreviousPage() {
           </TableHead>
 
           <TableBody>
-            {data.rows.map((r) => (
+            {filteredRows.map((r) => (
               <TableRow key={r.userId} hover>
                 <TableCell sx={{ fontWeight: 900 }}>
                   <Stack direction="row" spacing={1} alignItems="center">

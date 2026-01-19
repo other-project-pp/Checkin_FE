@@ -19,6 +19,7 @@ export type LatestRow = {
   userId: string;
   name: string;
   websiteName: string;
+  department: string;
   shift: string;
   profileUrl: string | null;
   round1: { status: RoundStatus; images: string[]; checkinTime: string | null; checkinId?: string | null;};
@@ -60,6 +61,7 @@ export type AbsenceRow = {
   name: string;
   profileUrl: string | null;
   websiteName: string | null;
+  department: string | null;
   type: AbsenceType;
   note?: string | null;
 };
