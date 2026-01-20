@@ -16,12 +16,18 @@ import {
   FormControl,
   InputLabel,
   MenuItem,
-  Select
+  Select,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
 } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import StatusChip from "../components/common/StatusChip";
 import ImageThumbStack from "../components/common/ImageThumbStack";
-import { getDaily } from "../services/adminservice";
+import { getDaily, getCheckinImages } from "../services/adminservice";
 import { type DailyResponse, type RoundStatus, type DailyRow } from "../types/admin.types";
 
 type StatusFilter =
@@ -64,6 +70,14 @@ export default function DailyPage() {
   const [selectedDate, setSelectedDate] = useState(() => ymd(new Date()));
   const [selectedDept, setSelectedDept] = useState<string>("ALL");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+
+  const [openCompare, setOpenCompare] = useState(false);
+  const [compareRow, setCompareRow] = useState<DailyRow | null>(null);
+  const [r1Idx, setR1Idx] = useState(0);
+  const [r2Idx, setR2Idx] = useState(0);
+  const [compareLoading, setCompareLoading] = useState(false);
+
+  const firstImg = (imgs?: string[] | null) => (imgs && imgs.length ? imgs[0] : null);
 
   const dateOptions = (() => {
     const arr: { value: string; label: string }[] = [];
@@ -111,6 +125,72 @@ export default function DailyPage() {
   useEffect(() => {
     setSelectedDept("ALL");
   }, [selectedShiftId, selectedDate]);
+
+  const ThumbRow = ({
+    images,
+    activeIndex,
+    onPick,
+  }: {
+    images: string[];
+    activeIndex: number;
+    onPick: (idx: number) => void;
+  }) => {
+    if (!images?.length) return null;
+
+    return (
+      <Stack direction="row" spacing={1} sx={{ overflowX: "auto", pb: 0.5 }}>
+        {images.map((src, idx) => (
+          <Box
+            key={`${src}-${idx}`}
+            component="img"
+            src={src}
+            onClick={() => onPick(idx)}
+            sx={{
+              width: 54,
+              height: 54,
+              objectFit: "cover",
+              borderRadius: 1,
+              cursor: "pointer",
+              border: idx === activeIndex ? "2px solid" : "1px solid",
+              borderColor: idx === activeIndex ? "primary.main" : "divider",
+            }}
+          />
+        ))}
+      </Stack>
+    );
+  };
+
+  const handleOpenCompare = async (row: DailyRow) => {
+    setCompareRow(row);
+    setR1Idx(0);
+    setR2Idx(0);
+    setOpenCompare(true);
+    setCompareLoading(true);
+
+    try {
+      const [r1Full, r2Full] = await Promise.all([
+        row.round1.checkinId ? getCheckinImages(row.round1.checkinId) : Promise.resolve({ ok: true, images: [] }),
+        row.round2.checkinId ? getCheckinImages(row.round2.checkinId) : Promise.resolve({ ok: true, images: [] }),
+      ]);
+
+      setCompareRow((prev) =>
+        prev
+          ? {
+              ...prev,
+              round1: { ...prev.round1, images: r1Full.images || prev.round1.images || [] },
+              round2: { ...prev.round2, images: r2Full.images || prev.round2.images || [] },
+            }
+          : prev
+      );
+    } finally {
+      setCompareLoading(false);
+    }
+  };
+
+  const handleCloseCompare = () => {
+    setOpenCompare(false);
+    setCompareRow(null);
+  };
 
   if (loading && !data) return <CircularProgress />;
   if (err) return <Alert severity="error">{err}</Alert>;
@@ -276,6 +356,7 @@ const finalRows = deptRows.filter((r: DailyRow) => {
               <TableCell><Typography fontWeight={900}>กะ</Typography></TableCell>
               <TableCell><Typography fontWeight={900}>รอบ 1</Typography></TableCell>
               <TableCell><Typography fontWeight={900}>รอบ 2</Typography></TableCell>
+              <TableCell><Typography fontWeight={900}>ตรวจรูป</Typography></TableCell>
             </TableRow>
           </TableHead>
 
@@ -321,11 +402,116 @@ const finalRows = deptRows.filter((r: DailyRow) => {
                     ) : null}
                   </Stack>
                 </TableCell>
+
+                <TableCell>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    disabled={!r.round1.checkinId && !r.round2.checkinId}
+                    onClick={() => handleOpenCompare(r)}
+                  >
+                    Check
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Dialog open={openCompare} onClose={handleCloseCompare} fullWidth maxWidth="lg">
+        <DialogTitle sx={{ fontWeight: 900 }}>
+          ตรวจรูป: {compareRow?.name || "-"}{" "}
+          <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+            {compareRow?.shiftName || ""}
+          </Typography>
+        </DialogTitle>
+
+        <DialogContent dividers>
+          {compareLoading ? (
+            <Stack alignItems="center" py={4}>
+              <CircularProgress />
+            </Stack>
+          ) : !compareRow ? (
+            <Alert severity="info">ยังไม่มีข้อมูล</Alert>
+          ) : (
+            <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="stretch">
+              {/* Left: Round 1 */}
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography fontWeight={900} sx={{ mb: 1 }}>
+                  รอบ 1 {fmtHHmm(compareRow.round1.checkinTime) ? `• ${fmtHHmm(compareRow.round1.checkinTime)}` : ""}
+                </Typography>
+
+                <Box
+                  sx={{
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: 2,
+                    p: 1,
+                    mb: 1,
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    minHeight: 260,
+                  }}
+                >
+                  {compareRow.round1.images?.length ? (
+                    <Box
+                      component="img"
+                      src={compareRow.round1.images[r1Idx] || firstImg(compareRow.round1.images) || ""}
+                      sx={{ width: "100%", maxHeight: 460, objectFit: "contain", borderRadius: 1 }}
+                    />
+                  ) : (
+                    <Typography color="text.secondary">ไม่มีรูป</Typography>
+                  )}
+                </Box>
+
+                <ThumbRow images={compareRow.round1.images || []} activeIndex={r1Idx} onPick={setR1Idx} />
+              </Box>
+
+              <Divider flexItem orientation="vertical" sx={{ display: { xs: "none", md: "block" } }} />
+              <Divider sx={{ display: { xs: "block", md: "none" } }} />
+
+              {/* Right: Round 2 */}
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography fontWeight={900} sx={{ mb: 1 }}>
+                  รอบ 2 {fmtHHmm(compareRow.round2.checkinTime) ? `• ${fmtHHmm(compareRow.round2.checkinTime)}` : ""}
+                </Typography>
+
+                <Box
+                  sx={{
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: 2,
+                    p: 1,
+                    mb: 1,
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    minHeight: 260,
+                  }}
+                >
+                  {compareRow.round2.images?.length ? (
+                    <Box
+                      component="img"
+                      src={compareRow.round2.images[r2Idx] || firstImg(compareRow.round2.images) || ""}
+                      sx={{ width: "100%", maxHeight: 460, objectFit: "contain", borderRadius: 1 }}
+                    />
+                  ) : (
+                    <Typography color="text.secondary">ไม่มีรูป</Typography>
+                  )}
+                </Box>
+
+                <ThumbRow images={compareRow.round2.images || []} activeIndex={r2Idx} onPick={setR2Idx} />
+              </Box>
+            </Stack>
+          )}
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={handleCloseCompare}>ปิด</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

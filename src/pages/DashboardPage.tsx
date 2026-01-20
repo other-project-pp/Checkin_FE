@@ -458,6 +458,7 @@ const finalRows = deptRows.filter((r) => {
                   <Button
                     size="small"
                     variant="outlined"
+                    disabled={!r.round1.checkinId && !r.round2.checkinId}
                     onClick={() => handleOpenCompare(r)}
                   >
                     Check
