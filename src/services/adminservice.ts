@@ -63,3 +63,7 @@ export async function getTodayScheduledRounds() {
   return res.data;
 }
 
+export async function updateScheduledRoundTime(id: string, sendAtHHmm: string) {
+  const res = await api.put(`/admin/schedule/${id}/time`, {sendAtHHmm });
+  return res.data;
+}

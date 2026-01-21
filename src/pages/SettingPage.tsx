@@ -20,6 +20,7 @@ import {
   getCheckinTemplate,
   updateCheckinTemplate,
   getTodayScheduledRounds,
+  updateScheduledRoundTime,
 } from "../services/adminservice";
 import type {
   CheckinTemplateResponse,
@@ -40,6 +41,7 @@ function fmtTimeBkk(iso: string) {
     hour12: false,
   });
 }
+
 
 function StatusChip({ status }: { status: string }) {
   const s = String(status || "").toLowerCase();
@@ -63,6 +65,10 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
+
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editTime, setEditTime] = useState<string>("");
+  const [editSaving, setEditSaving] = useState(false);
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
@@ -130,8 +136,95 @@ export default function SettingsPage() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    setEditId(null);
+  }, [selectedDate]);
+
   if (loading && !tplData && !schedData) return <CircularProgress />;
   if (err) return <Alert severity="error">{err}</Alert>;
+
+  const renderRoundCell = (r: ScheduledRoundItem | null) => {
+    if (!r) return "-";
+
+    const isPending = String(r.status || "").toLowerCase() === "pending";
+    const isEditing = editId === r._id;
+
+    return (
+      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+        {!isEditing ? (
+          <>
+            <Chip size="small" label={`${fmtTimeBkk(r.sendAt)} - ${fmtTimeBkk(r.windowEndAt)}`} />
+            <StatusChip status={r.status} />
+
+            {/* ✅ show only when pending */}
+            {isPending ? (
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => {
+                  setEditId(r._id);
+                  setEditTime(fmtTimeBkk(r.sendAt));
+                  setErr(null);
+                  setOkMsg(null);
+                }}
+              >
+                EDIT
+              </Button>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <TextField
+              size="small"
+              value={editTime}
+              onChange={(e) => setEditTime(e.target.value)}
+              placeholder="HH:mm"
+              sx={{ width: 90 }}
+              inputProps={{ inputMode: "numeric" }}
+            />
+
+            <Button
+              size="small"
+              variant="contained"
+              disabled={editSaving}
+              onClick={async () => {
+                try {
+                  setEditSaving(true);
+                  setErr(null);
+                  setOkMsg(null);
+
+                  const res = await updateScheduledRoundTime(r._id, editTime);
+                  if (!res?.ok) throw new Error(res?.message || "Update failed");
+
+                  setOkMsg("อัปเดตเวลาแล้ว");
+                  setEditId(null);
+
+                  // reload schedules
+                  const sched = await getTodayScheduledRounds();
+                  setSchedData(sched);
+                } catch (e: any) {
+                  setErr(e?.message || "Update failed");
+                } finally {
+                  setEditSaving(false);
+                }
+              }}
+            >
+              SAVE
+            </Button>
+
+            <Button
+              size="small"
+              variant="text"
+              disabled={editSaving}
+              onClick={() => setEditId(null)} // ✅ cancels only this one
+            >
+              CANCEL
+            </Button>
+          </>
+        )}
+      </Stack>
+    );
+  };
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -221,27 +314,9 @@ export default function SettingsPage() {
                       <TableRow key={it.shiftName} hover>
                         <TableCell sx={{ fontWeight: 900 }}>{it.shiftName}</TableCell>
 
-                        <TableCell>
-                          {r1 ? (
-                            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                              <Chip size="small" label={`${fmtTimeBkk(r1.sendAt)} - ${fmtTimeBkk(r1.windowEndAt)}`} />
-                              <StatusChip status={r1.status} />
-                            </Stack>
-                          ) : (
-                            "-"
-                          )}
-                        </TableCell>
+                        <TableCell>{renderRoundCell(r1)}</TableCell>
 
-                        <TableCell>
-                          {r2 ? (
-                            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                              <Chip size="small" label={`${fmtTimeBkk(r2.sendAt)} - ${fmtTimeBkk(r2.windowEndAt)}`} />
-                              <StatusChip status={r2.status} />
-                            </Stack>
-                          ) : (
-                            "-"
-                          )}
-                        </TableCell>
+                        <TableCell>{renderRoundCell(r2)}</TableCell>
                       </TableRow>
                     );
                   })}

@@ -164,6 +164,7 @@ export type UpdateCheckinTemplateResponse = {
 export type ScheduledRoundStatus = "pending" | "sent" | "skipped" | "cancelled" | "error" | string;
 
 export type ScheduledRoundItem = {
+  _id: string;
   round: 1 | 2;
   sendAt: string;       // ISO string
   windowEndAt: string;  // ISO string
