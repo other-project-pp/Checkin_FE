@@ -25,7 +25,7 @@ export const STATUS_META: Record<RoundStatus, StatusMeta> = {
   "ป่วย": { label: "🤒 ป่วย", color: "warning" },
   "กิจ": { label: "🧾 กิจ", color: "warning" },
   PN: { label: "🏖️ พักร้อน (PN)", color: "info", variant: "outlined" },
-
+  KL: { label: "🚫 ลา (KL)", color: "error" },
   KP: { label: "🚫 ขาดงาน (KP)", color: "error" },
   CL: { label: "⏸️ ยังไม่เริ่มงาน (CL)", color: "default", variant: "outlined" },
   NV: { label: "👋 ออกแล้ว (NV)", color: "default", variant: "outlined" },

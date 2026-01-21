@@ -10,6 +10,7 @@ export type RoundStatus =
   | "กิจ"
   | "ป่วย"
   | "PN"
+  | "KL"
   | "KP"
   | "CL"
   | "NV";
@@ -52,7 +53,7 @@ export type CurrentRoundResponse = {
 };
 
 // Absence Page
-export type AbsenceType = "dayoff" | "sick" | "personal";
+export type AbsenceType = "dayoff" | "sick" | "personal" | "leave";
 
 export type AbsenceDate = { y: number; m: number; day: number };
 
@@ -69,7 +70,7 @@ export type AbsenceRow = {
 export type AbsenceResponse = {
   ok: true;
   date: AbsenceDate;
-  counts: { dayoff: number; sick: number; personal: number };
+  counts: { dayoff: number; sick: number; personal: number; leave: number };
   rows: AbsenceRow[];
 };
 
@@ -84,7 +85,7 @@ export type DashRow = {
   shiftName: string;
   round1: { status: RoundStatus; images: string[]; checkinTime: string | null; checkinId?: string | null; };
   round2: { status: RoundStatus; images: string[]; checkinTime: string | null; checkinId?: string | null; };
-  remark: "dayoff" | "sick" | null;
+  remark: "dayoff" | "sick" | "personal" | "leave" | null;
 };
 
 export type DashShift = {
@@ -139,7 +140,7 @@ export type SubCounts = {
   late: number;
   notPaid: number;
   offTotal: number;
-  off: { X: number; XX: number; TX: number; personal: number; sick: number; PN: number };
+  off: { X: number; XX: number; TX: number; personal: number; sick: number; PN: number; KL: number };
   KP: number;
   CL: number;
 };

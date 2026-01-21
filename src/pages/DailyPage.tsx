@@ -216,7 +216,7 @@ const curRound = (r: DailyRow) => (currentRound === 2 ? r.round2 : r.round1);
 
 const isOffRow = (r: DailyRow) => {
   const s = curRound(r).status;
-  return s === "X" || s === "XX" || s === "TX" || s === "PN" || s === "กิจ" || s === "ป่วย";
+  return s === "X" || s === "XX" || s === "TX" || s === "PN" || s === "KL" || s === "กิจ" || s === "ป่วย";
 };
 
 const finalRows = deptRows.filter((r: DailyRow) => {
@@ -328,7 +328,7 @@ const finalRows = deptRows.filter((r: DailyRow) => {
               clickable
               onClick={() => toggleStatus("off")}
               variant={statusFilter === "off" ? "filled" : "outlined"}
-              label={`หยุด/ลา: ${data.subCounts.offTotal} (X:${data.subCounts.off.X}, XX:${data.subCounts.off.XX}, TX:${data.subCounts.off.TX}, กิจ:${data.subCounts.off.personal}, ป่วย:${data.subCounts.off.sick}, PN:${data.subCounts.off.PN})`}
+              label={`หยุด/ลา: ${data.subCounts.offTotal} (X:${data.subCounts.off.X}, XX:${data.subCounts.off.XX}, TX:${data.subCounts.off.TX}, กิจ:${data.subCounts.off.personal}, ป่วย:${data.subCounts.off.sick}, PN:${data.subCounts.off.PN}, ลา(KL):${(data.subCounts.off as any).KL || 0})`}
               color="info"
             />
             <Chip

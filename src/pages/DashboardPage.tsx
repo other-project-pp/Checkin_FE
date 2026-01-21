@@ -54,13 +54,14 @@ const fmtHHmm = (iso: string | null | undefined) => {
 const fileDate = (d: Date) => d.toLocaleDateString("en-CA");
 
 const remarkText = (
-  remark: "dayoff" | "sick" | "personal" | null,
+  remark: "dayoff" | "sick" | "personal" | "leave" | null,
   r1: RoundStatus,
   r2: RoundStatus
 ) => {
   if (remark === "dayoff") return "DAYOFF";
   if (remark === "personal") return "PERSONAL";
   if (remark === "sick") return "SICK";
+  if (remark === "leave") return "LEAVE";
 
   const s = [r1, r2];
   if (s.includes("absent")) return "ABSENT";
@@ -91,13 +92,15 @@ const exportExcel = (rows: DashRow[]) => {
 };
 
 function getRemarkChip(
-  remark: "dayoff" | "sick" |  "personal" | null,
+  remark: "dayoff" | "sick" |  "personal" | "leave" | null,
   r1: RoundStatus,
   r2: RoundStatus
 ) {
   if (remark === "dayoff") return <Chip size="small" label="วันหยุด" color="warning" />;
   if (remark === "personal") return <Chip size="small" label="กิจ" color="warning" />;
   if (remark === "sick") return <Chip size="small" label="ป่วย" color="warning" />;
+  if (remark === "leave") return <Chip size="small" label="ลา" color="warning" />;
+
   
   const s = [r1, r2];
 
@@ -216,7 +219,7 @@ const curRound = (r: DashRow) => (currentRound === 2 ? r.round2 : r.round1);
 const isOffRow = (r: DashRow) => {
   if (r.remark === "dayoff" || r.remark === "sick") return true;
   const s = curRound(r).status;
-  return s === "X" || s === "XX" || s === "TX" || s === "PN" || s === "กิจ" || s === "ป่วย";
+  return s === "X" || s === "XX" || s === "TX" || s === "PN" || s === "KL" || s === "กิจ" || s === "ป่วย";
 };
 
 const finalRows = deptRows.filter((r) => {
@@ -368,7 +371,7 @@ const finalRows = deptRows.filter((r) => {
                 clickable
                 onClick={() => toggleStatus("off")}
                 variant={statusFilter === "off" ? "filled" : "outlined"}
-                label={`หยุด/ลา: ${data.subCounts.offTotal} (X:${data.subCounts.off.X}, XX:${data.subCounts.off.XX}, TX:${data.subCounts.off.TX}, กิจ:${data.subCounts.off.personal}, ป่วย:${data.subCounts.off.sick}, PN:${data.subCounts.off.PN})`}
+                label={`หยุด/ลา: ${data.subCounts.offTotal} (X:${data.subCounts.off.X}, XX:${data.subCounts.off.XX}, TX:${data.subCounts.off.TX}, กิจ:${data.subCounts.off.personal}, ป่วย:${data.subCounts.off.sick}, PN:${data.subCounts.off.PN}, ลา(KL):${data.subCounts.off.KL})`}
                 color="info"
               />
               <Chip

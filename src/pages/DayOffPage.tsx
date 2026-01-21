@@ -25,6 +25,7 @@ import { type AbsenceType, type AbsenceResponse, type AbsenceDate } from "../typ
 function TypeChip({ type }: { type: AbsenceType }) {
   if (type === "sick") return <Chip size="small" label="ป่วย" color="warning" />;
   if (type === "personal") return <Chip size="small" label="กิจ" color="warning" />;
+  if (type === "leave") return <Chip size="small" label="ลา" color="warning" />;
   return <Chip size="small" label="หยุด" color="success" />;
 }
 
@@ -120,6 +121,13 @@ export default function AbsencePage() {
             variant={typeFilter === "personal" ? "filled" : "outlined"}
             label={`กิจ: ${data.counts.personal}`}
             color="info"
+          />
+          <Chip
+            clickable
+            onClick={() => toggleType("leave")}
+            variant={typeFilter === "leave" ? "filled" : "outlined"}
+            label={`กิจ: ${data.counts.leave}`}
+            color="warning"
           />
           <Chip
             clickable
