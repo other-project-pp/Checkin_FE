@@ -184,3 +184,26 @@ export interface TodayScheduledRoundsResponse {
   nextDate: string;
   days: { date: string; items: TodayScheduledRoundsItem[] }[];
 }
+
+export const WEBSITE_OPTIONS = [
+  "789BET",
+  "78WIN",
+  "NEW88",
+  "MB66",
+  "TH39",
+  "VG98",
+  "711PG",
+  "789PG",
+  "XO789",
+  "IOS123",
+  "XM66",
+  "JUN88",
+  "JL69",
+  "PG688",
+  "MK8",
+  "F168",
+  "NM9",
+] as const;
+
+export type WebsiteFilter = "ALL" | (typeof WEBSITE_OPTIONS)[number];
+

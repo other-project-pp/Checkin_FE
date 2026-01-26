@@ -20,7 +20,8 @@ import {
 } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import { getAbsence } from "../services/adminservice";
-import { type AbsenceType, type AbsenceResponse, type AbsenceDate } from "../types/admin.types";
+import { type AbsenceType, type AbsenceResponse, type AbsenceDate, type WebsiteFilter } from "../types/admin.types";
+import { WEBSITE_OPTIONS } from "../types/admin.types";
 
 function TypeChip({ type }: { type: AbsenceType }) {
   if (type === "sick") return <Chip size="small" label="ป่วย" color="warning" />;
@@ -44,7 +45,7 @@ export default function AbsencePage() {
   const [err, setErr] = useState<string | null>(null);
 
   const [typeFilter, setTypeFilter] = useState<"ALL" | AbsenceType>("ALL");
-  const [selectedDept, setSelectedDept] = useState<string>("ALL");
+  const [selectedWebsite, setSelectedWebsite] = useState<WebsiteFilter>("ALL");
 
   const toggleType = (t: "ALL" | AbsenceType) => {
     setTypeFilter((prev) => (prev === t ? "ALL" : t));
@@ -77,8 +78,8 @@ export default function AbsencePage() {
   }
 
   const filteredRows = (data.rows || []).filter((r) => {
-    if (selectedDept !== "ALL") {
-      if (String(r.department || "").toUpperCase() !== selectedDept) return false;
+    if (selectedWebsite !== "ALL") {
+      if (String(r.websiteName || "").toUpperCase() !== selectedWebsite) return false;
     }
     if (typeFilter !== "ALL") {
       if (r.type !== typeFilter) return false;
@@ -131,8 +132,8 @@ export default function AbsencePage() {
           />
           <Chip
             clickable
-            onClick={() => { setTypeFilter("ALL"); setSelectedDept("ALL"); }}
-            variant={typeFilter === "ALL" && selectedDept === "ALL" ? "filled" : "outlined"}
+            onClick={() => { setTypeFilter("ALL"); setSelectedWebsite("ALL"); }}
+            variant={typeFilter === "ALL" && selectedWebsite === "ALL" ? "filled" : "outlined"}
             label={`รวม: ${filteredRows.length}`}
           />
         </Stack>
@@ -141,13 +142,16 @@ export default function AbsencePage() {
           <InputLabel id="dept-select-label">แผนก</InputLabel>
           <Select
             labelId="dept-select-label"
-            value={selectedDept}
+            value={selectedWebsite}
             label="แผนก"
-            onChange={(e) => setSelectedDept(String(e.target.value))}
+            onChange={(e) => setSelectedWebsite(e.target.value as WebsiteFilter)}
           >
             <MenuItem value="ALL">ทั้งหมด</MenuItem>
-            <MenuItem value="789BET">789BET</MenuItem>
-            <MenuItem value="JUN88">JUN88</MenuItem>
+            {WEBSITE_OPTIONS.map((w) => (
+              <MenuItem key={w} value={w}>
+                {w}
+              </MenuItem>
+            ))}
           </Select>
         </FormControl>
       </Stack>

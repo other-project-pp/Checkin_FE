@@ -28,7 +28,8 @@ import { useCallback, useEffect, useState } from "react";
 import StatusChip from "../components/common/StatusChip";
 import ImageThumbStack from "../components/common/ImageThumbStack";
 import { getDashboard, getCheckinImages } from "../services/adminservice";
-import { type DashboardResponse, type RoundStatus, type DashRow  } from "../types/admin.types";
+import { type DashboardResponse, type RoundStatus, type DashRow, type WebsiteFilter } from "../types/admin.types";
+import { WEBSITE_OPTIONS } from "../types/admin.types";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import * as XLSX from "xlsx";
 
@@ -127,7 +128,7 @@ export default function DashboardPage() {
   const [r2Idx, setR2Idx] = useState(0);
 
   const [compareLoading, setCompareLoading] = useState(false);
-  const [selectedDept, setSelectedDept] = useState<string>("ALL");
+  const [selectedWebsite, setSelectedWebsite] = useState<WebsiteFilter>("ALL");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
 
   const firstImg = (imgs?: string[] | null) => (imgs && imgs.length ? imgs[0] : null);
@@ -160,12 +161,12 @@ export default function DashboardPage() {
   }, [load, selectedShiftId]);
 
   useEffect(() => {
-    setSelectedDept("ALL");
+    setSelectedWebsite("ALL");
   }, [selectedShiftId]);
 
   useEffect(() => {
     setStatusFilter("ALL");
-  }, [selectedShiftId, selectedDept]);
+  }, [selectedShiftId, selectedWebsite]);
 
   const handleOpenCompare = async (row: DashRow) => {
     setCompareRow(row);
@@ -200,16 +201,16 @@ export default function DashboardPage() {
 
   const rows = data?.rows || [];
 
-  const deptRows = rows.filter((r) => {
-  if (selectedDept === "ALL") return true;
-  return String(r.department || "").toUpperCase() === selectedDept;
+  const websiteRows = rows.filter((r) => {
+  if (selectedWebsite  === "ALL") return true;
+  return String(r.websiteName  || "").toUpperCase() === selectedWebsite;
 });
 
 // (B) decide current round (same idea as BE: if any user has round2 started, treat as round2)
 const isRealRoundStatus = (s: RoundStatus) =>
   s === "success" || s === "pending" || s === "late" || s === "absent";
 
-const round2Started = deptRows.some(
+const round2Started = websiteRows.some(
   (r) => isRealRoundStatus(r.round2.status) || !!r.round2.checkinId
 );
 const currentRound = round2Started ? 2 : 1;
@@ -222,7 +223,7 @@ const isOffRow = (r: DashRow) => {
   return s === "X" || s === "XX" || s === "TX" || s === "PN" || s === "KL" || s === "กิจ" || s === "ป่วย";
 };
 
-const finalRows = deptRows.filter((r) => {
+const finalRows = websiteRows.filter((r) => {
   if (statusFilter === "ALL") return true;
 
   const cur = curRound(r);
@@ -309,13 +310,16 @@ const finalRows = deptRows.filter((r) => {
           <InputLabel id="dept-select-label">แผนก</InputLabel>
           <Select
             labelId="dept-select-label"
-            value={selectedDept}
+            value={selectedWebsite}
             label="แผนก"
-            onChange={(e) => setSelectedDept(String(e.target.value))}
+            onChange={(e) => setSelectedWebsite(e.target.value as WebsiteFilter)}
           >
             <MenuItem value="ALL">ทั้งหมด</MenuItem>
-            <MenuItem value="789BET">789BET</MenuItem>
-            <MenuItem value="JUN88">JUN88</MenuItem>
+            {WEBSITE_OPTIONS.map((w) => (
+              <MenuItem key={w} value={w}>
+                {w}
+              </MenuItem>
+            ))}
           </Select>
         </FormControl>
 

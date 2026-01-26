@@ -28,7 +28,8 @@ import { useCallback, useEffect, useState } from "react";
 import StatusChip from "../components/common/StatusChip";
 import ImageThumbStack from "../components/common/ImageThumbStack";
 import { getDaily, getCheckinImages } from "../services/adminservice";
-import { type DailyResponse, type RoundStatus, type DailyRow } from "../types/admin.types";
+import { type DailyResponse, type RoundStatus, type DailyRow, type WebsiteFilter } from "../types/admin.types";
+import { WEBSITE_OPTIONS } from "../types/admin.types";
 
 type StatusFilter =
   | "ALL"
@@ -68,7 +69,7 @@ export default function DailyPage() {
   const [err, setErr] = useState<string | null>(null);
 
   const [selectedDate, setSelectedDate] = useState(() => ymd(new Date()));
-  const [selectedDept, setSelectedDept] = useState<string>("ALL");
+  const [selectedWebsite, setSelectedWebsite] = useState<WebsiteFilter>("ALL");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
 
   const [openCompare, setOpenCompare] = useState(false);
@@ -97,7 +98,7 @@ export default function DailyPage() {
 
   useEffect(() => {
     setStatusFilter("ALL");
-  }, [selectedShiftId, selectedDept, selectedDate]);
+  }, [selectedShiftId, selectedWebsite, selectedDate]);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -123,7 +124,7 @@ export default function DailyPage() {
   }, [load, selectedShiftId]);
 
   useEffect(() => {
-    setSelectedDept("ALL");
+    setSelectedWebsite("ALL");
   }, [selectedShiftId, selectedDate]);
 
   const ThumbRow = ({
@@ -199,8 +200,8 @@ export default function DailyPage() {
   const rows = data.rows || [];
   
   const deptRows = rows.filter((r: any) => {
-  if (selectedDept === "ALL") return true;
-  return String(r.department || "").toUpperCase() === selectedDept;
+  if (selectedWebsite === "ALL") return true;
+  return String(r.websiteName || "").toUpperCase() === selectedWebsite;
 });
 
 const isRealRoundStatus = (s: RoundStatus) =>
@@ -267,13 +268,16 @@ const finalRows = deptRows.filter((r: DailyRow) => {
             <InputLabel id="dept-select-label">แผนก</InputLabel>
             <Select
               labelId="dept-select-label"
-              value={selectedDept}
+              value={selectedWebsite}
               label="แผนก"
-              onChange={(e) => setSelectedDept(String(e.target.value))}
+              onChange={(e) => setSelectedWebsite(e.target.value as WebsiteFilter)}
             >
               <MenuItem value="ALL">ทั้งหมด</MenuItem>
-              <MenuItem value="789BET">789BET</MenuItem>
-              <MenuItem value="JUN88">JUN88</MenuItem>
+              {WEBSITE_OPTIONS.map((w) => (
+              <MenuItem key={w} value={w}>
+                {w}
+              </MenuItem>
+            ))}
             </Select>
           </FormControl>
 

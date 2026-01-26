@@ -22,7 +22,8 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import StatusChip from "../components/common/StatusChip";
 import ImageThumbStack from "../components/common/ImageThumbStack";
 import { getLatest, getCurrentRound } from "../services/adminservice";
-import { type LatestResponse } from "../types/admin.types";
+import { type LatestResponse, type WebsiteFilter } from "../types/admin.types";
+import { WEBSITE_OPTIONS } from "../types/admin.types";
 import { useAppState } from "../context/AppContext";
 import { getSocket } from "../services/socket";
 
@@ -35,7 +36,7 @@ export default function LatestPage() {
   const [err, setErr] = useState<string | null>(null);
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
-  const [selectedDept, setSelectedDept] = useState<string>("ALL");
+  const [selectedWebsite, setSelectedWebsite] = useState<WebsiteFilter>("ALL");
 
   const loadingRef = useRef(false);
 
@@ -143,10 +144,10 @@ export default function LatestPage() {
 
   useEffect(() => {
     setStatusFilter("ALL");
-  }, [data?.meta?.round, activeShiftId]);
+  }, [data?.meta?.round, activeShiftId, selectedWebsite]);
 
   useEffect(() => {
-    setSelectedDept("ALL");
+    setSelectedWebsite("ALL");
   }, [activeShiftId]);
 
   // Checkin (patch only the user + counts)
@@ -225,8 +226,8 @@ export default function LatestPage() {
 
   const filteredRows = data?.rows.filter((r: any) => {
     // department filter
-    if (selectedDept !== "ALL") {
-      if (String(r.department || "").toUpperCase() !== selectedDept) return false;
+    if (selectedWebsite !== "ALL") {
+      if (String(r.websiteName || "").toUpperCase() !== selectedWebsite) return false;
     }
 
     // status filter (based on current round)
@@ -297,13 +298,16 @@ export default function LatestPage() {
           <InputLabel id="dept-select-label">แผนก</InputLabel>
           <Select
             labelId="dept-select-label"
-            value={selectedDept}
+            value={selectedWebsite}
             label="แผนก"
-            onChange={(e) => setSelectedDept(String(e.target.value))}
+            onChange={(e) => setSelectedWebsite(e.target.value as WebsiteFilter)}
           >
             <MenuItem value="ALL">ทั้งหมด</MenuItem>
-            <MenuItem value="789BET">789BET</MenuItem>
-            <MenuItem value="JUN88">JUN88</MenuItem>
+            {WEBSITE_OPTIONS.map((w) => (
+              <MenuItem key={w} value={w}>
+                {w}
+              </MenuItem>
+            ))}
           </Select>
         </FormControl>
       </Stack>
