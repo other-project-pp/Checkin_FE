@@ -217,6 +217,7 @@ export type DiscordUserSnapshot = {
   inVoice: boolean;
   voiceChannelId: string | null;
   voiceChannelName: string | null;
+  websiteName: string | null;
   activities: Array<{
     type: string;
     name: string;

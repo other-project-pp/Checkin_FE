@@ -14,6 +14,11 @@ import {
   TableRow,
   TextField,
   Typography,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { getDiscordUsers } from "../services/adminservice";
@@ -48,6 +53,9 @@ export default function DiscordStatusPage() {
   const [q, setQ] = useState("");
   const [onlineOnly, setOnlineOnly] = useState(false);
   const [voiceOnly, setVoiceOnly] = useState(false);
+
+  const [websiteFilter, setWebsiteFilter] = useState<string>("ALL");
+  const [channelFilter, setChannelFilter] = useState<string>("ALL");
 
   // initial load
   useEffect(() => {
@@ -100,12 +108,47 @@ export default function DiscordStatusPage() {
     };
   }, []);
 
+  const websiteOptions = useMemo(() => {
+    const set = new Set<string>();
+    rows.forEach((r) => {
+      if (r.websiteName) set.add(r.websiteName);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [rows]);
+
+  const channelOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    rows.forEach((r) => {
+      if (r.inVoice && r.voiceChannelId) {
+        map.set(r.voiceChannelId, r.voiceChannelName || r.voiceChannelId);
+      }
+    });
+    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [rows]);
+
   const filtered = useMemo(() => {
     const kw = q.trim().toLowerCase();
     return rows
       .filter((r) => {
         if (onlineOnly && r.status === "offline") return false;
         if (voiceOnly && !r.inVoice) return false;
+
+        if (websiteFilter !== "ALL") {
+          if (websiteFilter === "UNKNOWN") {
+            if (r.websiteName) return false;
+          } else {
+            if (r.websiteName !== websiteFilter) return false;
+          }
+        }
+
+        if (channelFilter !== "ALL") {
+          if (channelFilter === "NOVOICE") {
+            if (r.inVoice) return false;
+          } else {
+            if (r.voiceChannelId !== channelFilter) return false;
+          }
+        }
+
         if (!kw) return true;
 
         const showName = (r.matchedName || r.discordName || "").toLowerCase();
@@ -129,7 +172,7 @@ export default function DiscordStatusPage() {
         const nb = (b.matchedName || b.discordName || "").toLowerCase();
         return na.localeCompare(nb);
       });
-  }, [rows, q, onlineOnly, voiceOnly]);
+  }, [rows, q, onlineOnly, voiceOnly, websiteFilter, channelFilter]);
 
   if (loading) return <CircularProgress />;
   if (err) return <Alert severity="error">{err}</Alert>;
@@ -140,35 +183,71 @@ export default function DiscordStatusPage() {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <Alert severity="info" sx={{ fontWeight: 800 }}>
-        Discord Live Status • Online: {onlineCount} • In Voice: {voiceCount} • Total: {rows.length}
+        สถานะ Discord Live • ออนไลน์: {onlineCount} • ในห้องพูดคุย: {voiceCount} • ทั้งหมด: {rows.length}
       </Alert>
 
       <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }} justifyContent="space-between">
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          <Chip
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
+            <Chip
             clickable
             variant={onlineOnly ? "filled" : "outlined"}
             color="success"
-            label="Online only"
+            label="ออนไลน์"
             onClick={() => setOnlineOnly((v) => !v)}
-          />
-          <Chip
+            />
+            <Chip
             clickable
             variant={voiceOnly ? "filled" : "outlined"}
             color="primary"
-            label="In voice only"
+            label="ในห้อง Voice"
             onClick={() => setVoiceOnly((v) => !v)}
-          />
+            />
+
+            <FormControl size="small" sx={{ minWidth: 180 }}>
+            <InputLabel id="website-filter">เว็บไซต์</InputLabel>
+            <Select
+                labelId="website-filter"
+                label="เว็บไซต์"
+                value={websiteFilter}
+                onChange={(e) => setWebsiteFilter(String(e.target.value))}
+            >
+                <MenuItem value="ALL">All</MenuItem>
+                <MenuItem value="UNKNOWN">Unknown</MenuItem>
+                {websiteOptions.map((w) => (
+                <MenuItem key={w} value={w}>
+                    {w}
+                </MenuItem>
+                ))}
+            </Select>
+            </FormControl>
+
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+            <InputLabel id="channel-filter">ช่องพูดคุยด้วยเสียง</InputLabel>
+            <Select
+                labelId="channel-filter"
+                label="ช่องพูดคุยด้วยเสียง"
+                value={channelFilter}
+                onChange={(e) => setChannelFilter(String(e.target.value))}
+            >
+                <MenuItem value="ALL">All</MenuItem>
+                <MenuItem value="NOVOICE">Not in voice</MenuItem>
+                {channelOptions.map(([id, name]) => (
+                <MenuItem key={id} value={id}>
+                    {name}
+                </MenuItem>
+                ))}
+            </Select>
+            </FormControl>
         </Stack>
 
         <TextField
-          size="small"
-          placeholder="Search name / username / voice channel..."
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          sx={{ minWidth: { xs: "100%", md: 360 } }}
+            size="small"
+            placeholder="ค้นหาชื่อ Discord / ชื่อผู้ใช้งาน / ช่องพูดคุย..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            sx={{ minWidth: { xs: "100%", md: 360 } }}
         />
-      </Stack>
+        </Stack>
 
       <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, overflowX: "auto" }}>
         <Table size="small">
@@ -176,14 +255,14 @@ export default function DiscordStatusPage() {
             <TableRow>
               <TableCell><Typography fontWeight={900}>ชื่อ</Typography></TableCell>
               <TableCell><Typography fontWeight={900}>สถานะ</Typography></TableCell>
-              <TableCell><Typography fontWeight={900}>Voice</Typography></TableCell>
+              <TableCell><Typography fontWeight={900}>ในห้อง Voice</Typography></TableCell>
               <TableCell><Typography fontWeight={900}>กำลังทำอะไร</Typography></TableCell>
             </TableRow>
           </TableHead>
 
           <TableBody>
             {filtered.map((r) => {
-              const displayName = r.matchedName || r.discordName || r.username;
+              const displayName = r.discordName || r.username;
 
               return (
                 <TableRow key={r.discordUserId} hover>
