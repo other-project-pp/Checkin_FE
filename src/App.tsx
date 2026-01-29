@@ -9,6 +9,7 @@ import AbsencePage from "./pages/DayOffPage";
 import SettingsPage from "./pages/SettingPage";
 import TelegramHookPage from "./pages/TelegramHookPage";
 import { Box, Typography } from "@mui/material";
+import DiscordStatusPage from "./pages/DiscordStatusPage";
 
 function Placeholder({ title }: { title: string }) {
   return (
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="/daily" element={<DailyPage/>} />
           <Route path="/absence" element={<AbsencePage />} />
           <Route path="/setting" element={<SettingsPage />} />
+          <Route path="/discord" element={<DiscordStatusPage />} />
           <Route path="/telegram" element={<TelegramHookPage />} />
           <Route path="/test" element={<Placeholder title="สรุปรายวัน" />} />
         </Routes>

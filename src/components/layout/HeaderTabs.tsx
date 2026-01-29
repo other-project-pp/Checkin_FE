@@ -8,6 +8,7 @@ const tabs = [
   { label: "📝 สรุปรายวัน", path: "/daily" },
   { label: "🌴 ลางาน/หยุด", path: "/absence" },
   { label: "⚙️ การตั้งค่า", path: "/setting" },
+  { label: "📡 Discord", path: "/discord" },
 ];
 
 function currentTabIndex(pathname: string) {

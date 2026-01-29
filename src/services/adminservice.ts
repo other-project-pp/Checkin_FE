@@ -1,5 +1,5 @@
 import { api } from "./api";
-import { type LatestResponse, type CurrentRoundResponse, type CheckinTemplateResponse, type UpdateCheckinTemplateResponse, type TodayScheduledRoundsResponse } from "../types/admin.types";
+import { type LatestResponse, type CurrentRoundResponse, type CheckinTemplateResponse, type UpdateCheckinTemplateResponse, type TodayScheduledRoundsResponse, type DiscordUserSnapshot } from "../types/admin.types";
 
 export async function getLatest(shiftId: string) {
   const res = await api.get<LatestResponse>("/admin/latest", {
@@ -66,4 +66,8 @@ export async function getTodayScheduledRounds() {
 export async function updateScheduledRoundTime(id: string, sendAtHHmm: string) {
   const res = await api.put(`/admin/schedule/${id}/time`, {sendAtHHmm });
   return res.data;
+}
+
+export async function getDiscordUsers() {
+  return api.get("/discord/users").then((r) => r.data as { ok: true; users: DiscordUserSnapshot[] });
 }

@@ -207,3 +207,22 @@ export const WEBSITE_OPTIONS = [
 
 export type WebsiteFilter = "ALL" | (typeof WEBSITE_OPTIONS)[number];
 
+export type DiscordUserSnapshot = {
+  discordUserId: string;
+  discordName: string;
+  username: string;
+  avatarUrl: string | null;
+  matchedName: string | null;
+  status: "online" | "idle" | "dnd" | "offline";
+  inVoice: boolean;
+  voiceChannelId: string | null;
+  voiceChannelName: string | null;
+  activities: Array<{
+    type: string;
+    name: string;
+    state?: string | null;
+    details?: string | null;
+  }>;
+  updatedAt: number;
+};
+
