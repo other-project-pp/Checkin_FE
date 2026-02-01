@@ -22,16 +22,40 @@ export default function HeaderTabs() {
   const value = currentTabIndex(location.pathname);
 
   return (
-    <Box sx={{ p: 2, pb: 1, borderBottom: "1px solid", borderColor: "divider" }}>
-      <Typography variant="h6" fontWeight={800} sx={{ mb: 1 }}>
+    <Box
+      sx={{
+        p: 2,
+        pb: 1,
+        borderBottom: "1px solid",
+        borderColor: "divider",
+
+        // ✅ make tab area readable
+        bgcolor: "rgba(255,255,255,0.55)",
+        backdropFilter: "blur(8px)",
+      }}
+    >
+       <Typography variant="h6" fontWeight={800} sx={{ mb: 1, color: "rgba(0,0,0,0.88)" }}>
         📊 ระบบตรวจสอบการส่งงาน
       </Typography>
-
       <Tabs
         value={value}
         onChange={(_, v) => navigate(tabs[v].path)}
         variant="scrollable"
         scrollButtons="auto"
+        sx={{
+          // ✅ darker tab labels
+          "& .MuiTab-root": {
+            color: "rgba(0,0,0,0.75)",
+            fontWeight: 800,
+            minHeight: 40,
+          },
+          "& .MuiTab-root.Mui-selected": {
+            color: "rgba(0,0,0,0.95)",
+          },
+          "& .MuiTabs-indicator": {
+            height: 3,
+          },
+        }}
       >
         {tabs.map((t) => (
           <Tab key={t.path} label={t.label} />

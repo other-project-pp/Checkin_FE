@@ -194,6 +194,11 @@ export default function DiscordStatusPage() {
             color="success"
             label="ออนไลน์"
             onClick={() => setOnlineOnly((v) => !v)}
+            sx={{
+              bgcolor: "rgba(255, 255, 255, 0.54)",
+              color: "success",
+              fontWeight: 800,
+            }}
             />
             <Chip
             clickable
@@ -201,17 +206,23 @@ export default function DiscordStatusPage() {
             color="primary"
             label="ในห้อง Voice"
             onClick={() => setVoiceOnly((v) => !v)}
+            sx={{
+              bgcolor: "rgba(255, 255, 255, 0.54)",
+              color: "primary",
+              fontWeight: 800,
+            }}
             />
 
             <FormControl size="small" sx={{ minWidth: 180 }}>
-            <InputLabel id="website-filter">เว็บไซต์</InputLabel>
+            <InputLabel id="website-filter" sx={{ color: "white" }}>เว็บไซต์</InputLabel>
             <Select
                 labelId="website-filter"
                 label="เว็บไซต์"
                 value={websiteFilter}
                 onChange={(e) => setWebsiteFilter(String(e.target.value))}
+                sx={{ color: "white" }}
             >
-                <MenuItem value="ALL">All</MenuItem>
+                <MenuItem value="ALL" >All</MenuItem>
                 <MenuItem value="UNKNOWN">Unknown</MenuItem>
                 {websiteOptions.map((w) => (
                 <MenuItem key={w} value={w}>
@@ -222,12 +233,13 @@ export default function DiscordStatusPage() {
             </FormControl>
 
             <FormControl size="small" sx={{ minWidth: 200 }}>
-            <InputLabel id="channel-filter">ช่องพูดคุยด้วยเสียง</InputLabel>
+            <InputLabel id="channel-filter" sx={{ color: "white" }}>ช่องพูดคุยด้วยเสียง</InputLabel>
             <Select
                 labelId="channel-filter"
                 label="ช่องพูดคุยด้วยเสียง"
                 value={channelFilter}
                 onChange={(e) => setChannelFilter(String(e.target.value))}
+                sx={{ color: "white" }}
             >
                 <MenuItem value="ALL">All</MenuItem>
                 <MenuItem value="NOVOICE">Not in voice</MenuItem>
@@ -241,22 +253,46 @@ export default function DiscordStatusPage() {
         </Stack>
 
         <TextField
-            size="small"
-            placeholder="ค้นหาชื่อ Discord / ชื่อผู้ใช้งาน / ช่องพูดคุย..."
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            sx={{ minWidth: { xs: "100%", md: 360 } }}
+          size="small"
+          placeholder="ค้นหาชื่อ Discord / ชื่อผู้ใช้งาน / ช่องพูดคุย..."
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          sx={{
+            minWidth: { xs: "100%", md: 360 },
+            bgcolor: "rgba(255,255,255,0.92)",
+            borderRadius: 2,
+
+            // text color
+            "& .MuiInputBase-input": { color: "rgba(0,0,0,0.9)" },
+
+            // placeholder color
+            "& .MuiInputBase-input::placeholder": { color: "rgba(0,0,0,0.55)", opacity: 1 },
+
+            // outline colors
+            "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(0,0,0,0.22)" },
+            "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(0,0,0,0.35)" },
+            "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(0,0,0,0.55)" },
+          }}
         />
         </Stack>
 
-      <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, overflowX: "auto" }}>
+      <TableContainer
+        component={Paper}
+        variant="outlined"
+        sx={{
+          borderRadius: 2,
+          overflowX: "auto",
+          bgcolor: "rgba(255,255,255,0.25)",
+          backdropFilter: "blur(6px)",
+        }}
+      >
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell><Typography fontWeight={900}>ชื่อ</Typography></TableCell>
-              <TableCell><Typography fontWeight={900}>สถานะ</Typography></TableCell>
-              <TableCell><Typography fontWeight={900}>ในห้อง Voice</Typography></TableCell>
-              <TableCell><Typography fontWeight={900}>กำลังทำอะไร</Typography></TableCell>
+              <TableCell><Typography fontWeight={900} sx={{ color: "white" }}>ชื่อ</Typography></TableCell>
+              <TableCell><Typography fontWeight={900} sx={{ color: "white" }}>สถานะ</Typography></TableCell>
+              <TableCell><Typography fontWeight={900} sx={{ color: "white" }}>ในห้อง Voice</Typography></TableCell>
+              <TableCell><Typography fontWeight={900} sx={{ color: "white" }}>กำลังทำอะไร</Typography></TableCell>
             </TableRow>
           </TableHead>
 
@@ -267,14 +303,14 @@ export default function DiscordStatusPage() {
               return (
                 <TableRow key={r.discordUserId} hover>
                   <TableCell sx={{ fontWeight: 900 }}>
-                    <Stack direction="row" spacing={1} alignItems="center">
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ color: "white" }}>
                       <Avatar src={r.avatarUrl || undefined} sx={{ width: 28, height: 28, fontSize: 12 }}>
                         {(displayName?.[0] || "?").toUpperCase()}
                       </Avatar>
 
                       <Stack spacing={0}>
                         <Typography sx={{ fontWeight: 900, lineHeight: 1.2 }}>{displayName}</Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, color: "white" }}>
                           @{r.username}
                         </Typography>
                       </Stack>

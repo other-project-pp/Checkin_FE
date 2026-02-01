@@ -15,6 +15,13 @@ export type RoundStatus =
   | "CL"
   | "NV";
 
+export type PaginationMeta = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
 // Latest Page
 export type LatestRow = {
   userId: string;
@@ -98,6 +105,7 @@ export type DashShift = {
 export type DashboardResponse = {
   ok: true;
   meta: { serverTime: string };
+  pagination?: PaginationMeta;
   totalUsers: number;
   shifts: DashShift[];
   rows: DashRow[];
@@ -127,6 +135,7 @@ export type DailyShift = {
 export type DailyResponse = {
   ok: true;
   meta: { serverTime: string };
+  pagination?: PaginationMeta;
   totalUsers: number;
   shifts: DailyShift[];
   rows: DailyRow[];

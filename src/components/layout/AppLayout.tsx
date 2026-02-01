@@ -12,45 +12,59 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   return (
-     <Box
+    <Box
       sx={{
         position: "fixed",
         inset: 0,
         overflow: "hidden",
       }}
     >
-      <P5Background bgImage={p2bg} fgImage={p2fg} particleCount={500} />
-      <Box
+      {/* Full-width middle container */}
+      <Paper
+        elevation={0}
         sx={{
           position: "absolute",
           inset: 0,
+          width: "100%",
+          height: "100%",
+          borderRadius: 0,
+          overflow: "hidden",
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          p: { xs: 1.5, sm: 3 },
-          zIndex: 2,
-          backgroundColor: "rgba(0,0,0,0.0)", // set to 0.15 if you want darker
+          flexDirection: "column",
+
+          // important: allow background layers
+          bgcolor: "transparent",
         }}
       >
-        <Paper
-          elevation={10}
+        {/* P5 as background INSIDE the middle box */}
+        <Box
           sx={{
-            width: "min(1100px, 100%)",
-            height: "min(900px, calc(100vh - 48px))",
-            borderRadius: 3,
-            overflow: "hidden",
+            position: "absolute",
+            inset: 0,
+            zIndex: 0,
+          }}
+        >
+          <P5Background bgImage={p2bg} fgImage={p2fg} particleCount={500} />
+        </Box>
+
+        {/* Foreground content */}
+        <Box
+          sx={{
+            position: "relative",
+            zIndex: 1,
+            height: "100%",
             display: "flex",
             flexDirection: "column",
-            bgcolor: "rgba(255,255,255,0.92)",
+            bgcolor: "rgba(255,255,255,0)",
+            backdropFilter: "blur(2px)",
           }}
         >
           {header}
-
           <Box sx={{ flex: 1, overflow: "auto", p: 2 }}>
             {children}
           </Box>
-        </Paper>
-      </Box>
+        </Box>
+      </Paper>
     </Box>
   );
 }

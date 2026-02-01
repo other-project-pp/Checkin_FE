@@ -23,8 +23,13 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  TextField,
+  InputAdornment,
+  IconButton,
+  TablePagination,
 } from "@mui/material";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import SearchIcon from "@mui/icons-material/Search";
 import StatusChip from "../components/common/StatusChip";
 import ImageThumbStack from "../components/common/ImageThumbStack";
 import { getDaily, getCheckinImages } from "../services/adminservice";
@@ -78,6 +83,12 @@ export default function DailyPage() {
   const [r2Idx, setR2Idx] = useState(0);
   const [compareLoading, setCompareLoading] = useState(false);
 
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
+
+  const [searchText, setSearchText] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+
   const firstImg = (imgs?: string[] | null) => (imgs && imgs.length ? imgs[0] : null);
 
   const dateOptions = (() => {
@@ -105,23 +116,40 @@ export default function DailyPage() {
     return () => clearInterval(t);
   }, []);
 
-  const load = useCallback(async (sid?: string | null) => {
-    setLoading(true);
-    setErr(null);
-    try {
-      const d = (await getDaily(sid || undefined, selectedDate)) as DailyResponse;
-      setData(d);
-    } catch (e: any) {
-      setErr(e?.message || "Failed to load");
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedDate]);
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      setLoading(true);
+      setErr(null);
+      try {
+        const apiPage = page + 1;
+        const d = await getDaily(
+          selectedShiftId || undefined,
+          selectedDate,
+          apiPage,
+          rowsPerPage,
+          searchQuery || undefined
+        );
+        if (alive) setData(d);
+      } catch (e: any) {
+        if (alive) {
+          setErr(e?.message || "Failed to load");
+          setData(null);
+        }
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [selectedShiftId, selectedDate, page, rowsPerPage, searchQuery]);
 
   useEffect(() => {
-    load(selectedShiftId);
-  }, [load, selectedShiftId]);
+    setPage(0);
+  }, [selectedShiftId, selectedDate, selectedWebsite, statusFilter, searchQuery]);
 
   useEffect(() => {
     setSelectedWebsite("ALL");
@@ -193,6 +221,11 @@ export default function DailyPage() {
     setCompareRow(null);
   };
 
+  const doSearch = () => {
+    setPage(0);
+    setSearchQuery(searchText.trim());
+  };
+
   if (loading && !data) return <CircularProgress />;
   if (err) return <Alert severity="error">{err}</Alert>;
   if (!data) return <Alert severity="info">ยังไม่มีข้อมูล</Alert>;
@@ -200,43 +233,52 @@ export default function DailyPage() {
   const rows = data.rows || [];
   
   const deptRows = rows.filter((r: any) => {
-  if (selectedWebsite === "ALL") return true;
-  return String(r.websiteName || "").toUpperCase() === selectedWebsite;
-});
+    if (selectedWebsite === "ALL") return true;
+    return String(r.websiteName || "").toUpperCase() === selectedWebsite;
+  });
 
-const isRealRoundStatus = (s: RoundStatus) =>
-  s === "success" || s === "pending" || s === "late" || s === "absent";
+  const isRealRoundStatus = (s: RoundStatus) =>
+    s === "success" || s === "pending" || s === "late" || s === "absent";
 
-// ✅ round2 started only if it has real status or checkinId
-const round2Started = deptRows.some((r: DailyRow) =>
-  isRealRoundStatus(r.round2.status) || !!r.round2.checkinId
-);
+  // ✅ round2 started only if it has real status or checkinId
+  const round2Started = deptRows.some((r: DailyRow) =>
+    isRealRoundStatus(r.round2.status) || !!r.round2.checkinId
+  );
 
-const currentRound = round2Started ? 2 : 1;
-const curRound = (r: DailyRow) => (currentRound === 2 ? r.round2 : r.round1);
+  const currentRound = round2Started ? 2 : 1;
+  const curRound = (r: DailyRow) => (currentRound === 2 ? r.round2 : r.round1);
 
-const isOffRow = (r: DailyRow) => {
-  const s = curRound(r).status;
-  return s === "X" || s === "XX" || s === "TX" || s === "PN" || s === "KL" || s === "กิจ" || s === "ป่วย";
-};
+  const isOffRow = (r: DailyRow) => {
+    const s = curRound(r).status;
+    return s === "X" || s === "XX" || s === "TX" || s === "PN" || s === "KL" || s === "กิจ" || s === "ป่วย";
+  };
 
-const finalRows = deptRows.filter((r: DailyRow) => {
-  if (statusFilter === "ALL") return true;
+  const finalRows = deptRows.filter((r: DailyRow) => {
+    if (statusFilter === "ALL") return true;
 
-  const cur = curRound(r);
-  const submitted = !!cur.checkinId;
+    const cur = curRound(r);
+    const submitted = !!cur.checkinId;
 
-  if (statusFilter === "submitted") return submitted;
-  if (statusFilter === "late") return cur.status === "late";
-  if (statusFilter === "notSubmitted") return !submitted && cur.status === "pending" && !isOffRow(r);
-  if (statusFilter === "notPaid") return !submitted && cur.status === "absent" && !isOffRow(r);
+    if (statusFilter === "submitted") return submitted;
+    if (statusFilter === "late") return cur.status === "late";
+    if (statusFilter === "notSubmitted") return !submitted && cur.status === "pending" && !isOffRow(r);
+    if (statusFilter === "notPaid") return !submitted && cur.status === "absent" && !isOffRow(r);
 
-  if (statusFilter === "off") return isOffRow(r);
-  if (statusFilter === "KP") return cur.status === "KP";
-  if (statusFilter === "CL") return cur.status === "CL";
+    if (statusFilter === "off") return isOffRow(r);
+    if (statusFilter === "KP") return cur.status === "KP";
+    if (statusFilter === "CL") return cur.status === "CL";
 
-  return true;
-});
+    return true;
+  });
+
+  const handleChangePage = (_: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (e: any) => {
+    setRowsPerPage(parseInt(e.target.value, 10));
+    setPage(0);
+  };
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -251,6 +293,11 @@ const finalRows = deptRows.filter((r: DailyRow) => {
           color={selectedShiftId ? "default" : "primary"}
           onClick={() => setSelectedShiftId(null)}
           clickable
+          sx={{
+            bgcolor: "rgba(255,255,255,0.72)",
+            color: "rgba(0,0,0,0.9)",
+            fontWeight: 800,
+          }}
         />
         {data.shifts.map((s) => (
           <Chip
@@ -259,20 +306,26 @@ const finalRows = deptRows.filter((r: DailyRow) => {
             color={selectedShiftId === s.shiftId ? "primary" : "default"}
             onClick={() => setSelectedShiftId(s.shiftId)}
             clickable
+            sx={{
+              bgcolor: "rgba(255,255,255,0.72)",
+              color: "rgba(0,0,0,0.9)",
+              fontWeight: 800,
+            }}
           />
         ))}
         </Stack>
 
         <Stack direction="row" spacing={1} alignItems="center">
           <FormControl size="small" sx={{ minWidth: 160 }}>
-            <InputLabel id="dept-select-label">แผนก</InputLabel>
+            <InputLabel id="dept-select-label" sx={{ color: "white" }}>แผนก</InputLabel>
             <Select
               labelId="dept-select-label"
               value={selectedWebsite}
               label="แผนก"
               onChange={(e) => setSelectedWebsite(e.target.value as WebsiteFilter)}
+              sx={{ color: "white" }}
             >
-              <MenuItem value="ALL">ทั้งหมด</MenuItem>
+              <MenuItem value="ALL" >ทั้งหมด</MenuItem>
               {WEBSITE_OPTIONS.map((w) => (
               <MenuItem key={w} value={w}>
                 {w}
@@ -282,12 +335,13 @@ const finalRows = deptRows.filter((r: DailyRow) => {
           </FormControl>
 
           <FormControl size="small" sx={{ minWidth: 220 }}>
-            <InputLabel id="date-select-label">เลือกวันที่</InputLabel>
+            <InputLabel id="date-select-label" sx={{ color: "white" }}>เลือกวันที่</InputLabel>
             <Select
               labelId="date-select-label"
               label="เลือกวันที่"
               value={selectedDate}
               onChange={(e) => setSelectedDate(String(e.target.value))}
+              sx={{ color: "white" }}
             >
               {dateOptions.map((o) => (
                 <MenuItem key={o.value} value={o.value}>
@@ -296,8 +350,38 @@ const finalRows = deptRows.filter((r: DailyRow) => {
               ))}
             </Select>
           </FormControl>
+
+          <TextField
+            size="small"
+            placeholder="ค้นหา (ชื่อ/เว็บไซต์/แผนก/กะ)"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                doSearch();
+              }
+            }}
+            sx={{
+              width: { xs: 200, sm: 320 },
+              bgcolor: "rgba(255,255,255,0.65)",
+              backdropFilter: "blur(8px)",
+              borderRadius: 2,
+              "& .MuiInputBase-root": { color: "rgba(0,0,0,0.9)" },
+            }}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton onClick={doSearch} edge="end">
+                    <SearchIcon />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
         </Stack>
       </Stack>
+
       <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }} justifyContent="space-between">
         {data.subCounts && selectedShiftId && (
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -307,12 +391,28 @@ const finalRows = deptRows.filter((r: DailyRow) => {
               variant={statusFilter === "submitted" ? "filled" : "outlined"}
               label={`ส่งแล้ว: ${data.subCounts.submitted}`}
               color="success"
+              sx={{
+                    bgcolor: statusFilter === "notSubmitted" ? undefined : "rgba(255,255,255,0.72)",
+                    color: "rgba(0,0,0,0.9)",
+                    fontWeight: 800,
+                    "&.MuiChip-outlined": {
+                      bgcolor: "rgba(255,255,255,0.55)",
+                    },
+                  }}
             />
             <Chip
               clickable
               onClick={() => toggleStatus("notSubmitted")}
               variant={statusFilter === "notSubmitted" ? "filled" : "outlined"}
               label={`ยังไม่ส่ง: ${data.subCounts.notSubmitted}`}
+              sx={{
+                    bgcolor: statusFilter === "notSubmitted" ? undefined : "rgba(255,255,255,0.72)",
+                    color: "rgba(0,0,0,0.9)",
+                    fontWeight: 800,
+                    "&.MuiChip-outlined": {
+                      bgcolor: "rgba(255,255,255,0.55)",
+                    },
+                  }}
             />
             <Chip
               clickable
@@ -320,6 +420,14 @@ const finalRows = deptRows.filter((r: DailyRow) => {
               variant={statusFilter === "late" ? "filled" : "outlined"}
               label={`สาย: ${data.subCounts.late}`}
               color="warning"
+              sx={{
+                    bgcolor: statusFilter === "notSubmitted" ? undefined : "rgba(255,255,255,0.72)",
+                    color: "rgba(0,0,0,0.9)",
+                    fontWeight: 800,
+                    "&.MuiChip-outlined": {
+                      bgcolor: "rgba(255,255,255,0.55)",
+                    },
+                  }}
             />
             <Chip
               clickable
@@ -327,6 +435,14 @@ const finalRows = deptRows.filter((r: DailyRow) => {
               variant={statusFilter === "notPaid" ? "filled" : "outlined"}
               label={`ไม่ได้รับค่าแรง: ${data.subCounts.notPaid}`}
               color="error"
+              sx={{
+                    bgcolor: statusFilter === "notSubmitted" ? undefined : "rgba(255,255,255,0.72)",
+                    color: "rgba(0,0,0,0.9)",
+                    fontWeight: 800,
+                    "&.MuiChip-outlined": {
+                      bgcolor: "rgba(255,255,255,0.55)",
+                    },
+                  }}
             />
             <Chip
               clickable
@@ -334,33 +450,66 @@ const finalRows = deptRows.filter((r: DailyRow) => {
               variant={statusFilter === "off" ? "filled" : "outlined"}
               label={`หยุด/ลา: ${data.subCounts.offTotal} (X:${data.subCounts.off.X}, XX:${data.subCounts.off.XX}, TX:${data.subCounts.off.TX}, กิจ:${data.subCounts.off.personal}, ป่วย:${data.subCounts.off.sick}, PN:${data.subCounts.off.PN}, ลา(KL):${(data.subCounts.off as any).KL || 0})`}
               color="info"
+              sx={{
+                    bgcolor: statusFilter === "notSubmitted" ? undefined : "rgba(255,255,255,0.72)",
+                    color: "rgba(0,0,0,0.9)",
+                    fontWeight: 800,
+                    "&.MuiChip-outlined": {
+                      bgcolor: "rgba(255,255,255,0.55)",
+                    },
+                  }}
             />
             <Chip
               clickable
               onClick={() => toggleStatus("KP")}
               variant={statusFilter === "KP" ? "filled" : "outlined"}
               label={`ขาดงาน(KP): ${data.subCounts.KP}`}
+              sx={{
+                    bgcolor: statusFilter === "notSubmitted" ? undefined : "rgba(255,255,255,0.72)",
+                    color: "rgba(0,0,0,0.9)",
+                    fontWeight: 800,
+                    "&.MuiChip-outlined": {
+                      bgcolor: "rgba(255,255,255,0.55)",
+                    },
+                  }}
             />
             <Chip
               clickable
               onClick={() => toggleStatus("CL")}
               variant={statusFilter === "CL" ? "filled" : "outlined"}
               label={`ยังไม่เริ่มงาน(CL): ${data.subCounts.CL}`}
+              sx={{
+                    bgcolor: statusFilter === "notSubmitted" ? undefined : "rgba(255,255,255,0.72)",
+                    color: "rgba(0,0,0,0.9)",
+                    fontWeight: 800,
+                    "&.MuiChip-outlined": {
+                      bgcolor: "rgba(255,255,255,0.55)",
+                    },
+                  }}
             />
           </Stack>
         )}
       </Stack>
 
-      <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, overflowX: "auto" }}>
+      <TableContainer
+        component={Paper}
+        variant="outlined"
+        sx={{
+          borderRadius: 2,
+          overflowX: "auto",
+          bgcolor: "rgba(255,255,255,0.25)",
+          backdropFilter: "blur(6px)",
+        }}
+      >
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell><Typography fontWeight={900}>ชื่อ</Typography></TableCell>
-              <TableCell><Typography fontWeight={900}>เว็บไซต์</Typography></TableCell>
-              <TableCell><Typography fontWeight={900}>กะ</Typography></TableCell>
-              <TableCell><Typography fontWeight={900}>รอบ 1</Typography></TableCell>
-              <TableCell><Typography fontWeight={900}>รอบ 2</Typography></TableCell>
-              <TableCell><Typography fontWeight={900}>ตรวจรูป</Typography></TableCell>
+              <TableCell><Typography fontWeight={900} sx={{ color: "white" }}>ชื่อ</Typography></TableCell>
+              <TableCell><Typography fontWeight={900} sx={{ color: "white" }}>เว็บไซต์</Typography></TableCell>
+              <TableCell><Typography fontWeight={900} sx={{ color: "white" }}>กะ</Typography></TableCell>
+              <TableCell><Typography fontWeight={900} sx={{ color: "white" }}>รอบ 1</Typography></TableCell>
+              <TableCell><Typography fontWeight={900} sx={{ color: "white" }}>รอบ 2</Typography></TableCell>
+              <TableCell><Typography fontWeight={900} sx={{ color: "white" }}>ตรวจรูป</Typography></TableCell>
             </TableRow>
           </TableHead>
 
@@ -368,7 +517,7 @@ const finalRows = deptRows.filter((r: DailyRow) => {
             {finalRows.map((r) => (
               <TableRow key={r.userId} hover>
                 <TableCell sx={{ fontWeight: 900 }}>
-                  <Stack direction="row" spacing={1} alignItems="center">
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ color: "white" }}>
                     <Avatar src={r.profileUrl || undefined} sx={{ width: 28, height: 28, fontSize: 12 }}>
                       {r.name?.[0] || "?"}
                     </Avatar>
@@ -376,8 +525,8 @@ const finalRows = deptRows.filter((r: DailyRow) => {
                   </Stack>
                 </TableCell>
 
-                <TableCell>{r.websiteName || "-"}</TableCell>
-                <TableCell>{r.shiftName}</TableCell>
+                <TableCell sx={{ color: "white" }}>{r.websiteName || "-"}</TableCell>
+                <TableCell sx={{ color: "white" }}>{r.shiftName}</TableCell>
 
                 <TableCell>
                   <Stack spacing={0.5}>
@@ -422,6 +571,27 @@ const finalRows = deptRows.filter((r: DailyRow) => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Paper
+        variant="outlined"
+        sx={{
+          mt: 1,
+          borderRadius: 2,
+          bgcolor: "rgba(255,255,255,0.45)",
+          backdropFilter: "blur(10px)",
+        }}
+      >
+        <TablePagination
+          component="div"
+          count={data?.pagination?.total ?? 0}
+          page={page}
+          onPageChange={handleChangePage}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+          rowsPerPageOptions={[20, 50, 100]}
+          labelRowsPerPage="แสดงต่อหน้า"
+        />
+      </Paper>
 
       <Dialog open={openCompare} onClose={handleCloseCompare} fullWidth maxWidth="lg">
         <DialogTitle sx={{ fontWeight: 900 }}>

@@ -23,8 +23,13 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  TablePagination,
+  TextField,
+  InputAdornment,
+  IconButton,
 } from "@mui/material";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import SearchIcon from "@mui/icons-material/Search";
 import StatusChip from "../components/common/StatusChip";
 import ImageThumbStack from "../components/common/ImageThumbStack";
 import { getDashboard, getCheckinImages } from "../services/adminservice";
@@ -131,6 +136,12 @@ export default function DashboardPage() {
   const [selectedWebsite, setSelectedWebsite] = useState<WebsiteFilter>("ALL");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
 
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
+
+  const [searchText, setSearchText] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+
   const firstImg = (imgs?: string[] | null) => (imgs && imgs.length ? imgs[0] : null);
 
   useEffect(() => {
@@ -142,23 +153,34 @@ export default function DashboardPage() {
     setStatusFilter((prev) => (prev === v ? "ALL" : v));
   };
 
-  const load = useCallback(async (sid?: string | null) => {
+  useEffect(() => {
+  let alive = true;
+
+  (async () => {
     setLoading(true);
     setErr(null);
     try {
-      const d = (await getDashboard(sid || undefined)) as DashboardResponse;
-      setData(d);
+      const apiPage = page + 1;
+      const d = await getDashboard(selectedShiftId || undefined, apiPage, rowsPerPage, searchQuery || undefined);
+      if (alive) setData(d);
     } catch (e: any) {
-      setErr(e?.message || "Failed to load");
-      setData(null);
+      if (alive) {
+        setErr(e?.message || "Failed to load");
+        setData(null);
+      }
     } finally {
-      setLoading(false);
+      if (alive) setLoading(false);
     }
-  }, []);
+  })();
 
-  useEffect(() => {
-    load(selectedShiftId);
-  }, [load, selectedShiftId]);
+  return () => {
+    alive = false;
+  };
+}, [selectedShiftId, page, rowsPerPage, searchQuery]);
+
+   useEffect(() => {
+    setPage(0);
+  }, [selectedShiftId, selectedWebsite, statusFilter, searchQuery]);
 
   useEffect(() => {
     setSelectedWebsite("ALL");
@@ -167,6 +189,11 @@ export default function DashboardPage() {
   useEffect(() => {
     setStatusFilter("ALL");
   }, [selectedShiftId, selectedWebsite]);
+
+  const doSearch = () => {
+    setPage(0);
+    setSearchQuery(searchText.trim());
+  };
 
   const handleOpenCompare = async (row: DashRow) => {
     setCompareRow(row);
@@ -202,44 +229,56 @@ export default function DashboardPage() {
   const rows = data?.rows || [];
 
   const websiteRows = rows.filter((r) => {
-  if (selectedWebsite  === "ALL") return true;
-  return String(r.websiteName  || "").toUpperCase() === selectedWebsite;
-});
+    if (selectedWebsite  === "ALL") return true;
+    return String(r.websiteName  || "").toUpperCase() === selectedWebsite;
+  });
 
-// (B) decide current round (same idea as BE: if any user has round2 started, treat as round2)
-const isRealRoundStatus = (s: RoundStatus) =>
-  s === "success" || s === "pending" || s === "late" || s === "absent";
+  // (B) decide current round (same idea as BE: if any user has round2 started, treat as round2)
+  const isRealRoundStatus = (s: RoundStatus) =>
+    s === "success" || s === "pending" || s === "late" || s === "absent";
 
-const round2Started = websiteRows.some(
-  (r) => isRealRoundStatus(r.round2.status) || !!r.round2.checkinId
-);
-const currentRound = round2Started ? 2 : 1;
+  const round2Started = websiteRows.some(
+    (r) => isRealRoundStatus(r.round2.status) || !!r.round2.checkinId
+  );
+  const currentRound = round2Started ? 2 : 1;
 
-const curRound = (r: DashRow) => (currentRound === 2 ? r.round2 : r.round1);
+  const curRound = (r: DashRow) => (currentRound === 2 ? r.round2 : r.round1);
 
-const isOffRow = (r: DashRow) => {
-  if (r.remark === "dayoff" || r.remark === "sick") return true;
-  const s = curRound(r).status;
-  return s === "X" || s === "XX" || s === "TX" || s === "PN" || s === "KL" || s === "กิจ" || s === "ป่วย";
-};
+  const isOffRow = (r: DashRow) => {
+    if (r.remark === "dayoff" || r.remark === "sick") return true;
+    const s = curRound(r).status;
+    return s === "X" || s === "XX" || s === "TX" || s === "PN" || s === "KL" || s === "กิจ" || s === "ป่วย";
+  };
 
-const finalRows = websiteRows.filter((r) => {
-  if (statusFilter === "ALL") return true;
+  const finalRows = websiteRows.filter((r) => {
+    if (statusFilter === "ALL") return true;
 
-  const cur = curRound(r);
-  const submitted = !!cur.checkinId;
+    const cur = curRound(r);
+    const submitted = !!cur.checkinId;
 
-  if (statusFilter === "submitted") return submitted;
-  if (statusFilter === "late") return cur.status === "late";
-  if (statusFilter === "notSubmitted") return !submitted && cur.status === "pending" && !isOffRow(r);
-  if (statusFilter === "notPaid") return !submitted && cur.status === "absent" && !isOffRow(r);
+    if (statusFilter === "submitted") return submitted;
+    if (statusFilter === "late") return cur.status === "late";
+    if (statusFilter === "notSubmitted") return !submitted && cur.status === "pending" && !isOffRow(r);
+    if (statusFilter === "notPaid") return !submitted && cur.status === "absent" && !isOffRow(r);
 
-  if (statusFilter === "off") return isOffRow(r);
-  if (statusFilter === "KP") return cur.status === "KP";
-  if (statusFilter === "CL") return cur.status === "CL";
+    if (statusFilter === "off") return isOffRow(r);
+    if (statusFilter === "KP") return cur.status === "KP";
+    if (statusFilter === "CL") return cur.status === "CL";
 
-  return true;
-});
+    return true;
+  });
+
+  const totalFromApi = data?.pagination?.total ?? finalRows.length;
+
+  const handleChangePage = (_: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (e: any) => {
+    const next = parseInt(e.target.value, 10);
+    setRowsPerPage(next);
+    setPage(0);
+  };
 
   const ThumbRow = ({
     images,
@@ -283,9 +322,38 @@ const finalRows = websiteRows.filter((r) => {
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {/* (1) Date Time + Download*/}
       <Stack direction="row" justifyContent="space-between" alignItems="center" gap={2}>
-        <Typography sx={{ fontWeight: 800, flex: 1 }}>
+        <Typography sx={{ fontWeight: 800, flex: 1, color: "white" }}>
             วันที่: {fmtNow(now)}
         </Typography>
+
+        <TextField
+          size="small"
+          placeholder="ค้นหา (ชื่อ/เว็บไซต์/แผนก/กะ)"
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              doSearch();
+            }
+          }}
+          sx={{
+            width: { xs: 200, sm: 320 },
+            bgcolor: "rgba(255,255,255,0.65)",
+            backdropFilter: "blur(8px)",
+            borderRadius: 2,
+            "& .MuiInputBase-root": { color: "rgba(0,0,0,0.9)" },
+          }}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton onClick={doSearch} edge="end">
+                  <SearchIcon />
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
+        />
 
         <Button
             variant="contained"
@@ -294,7 +362,7 @@ const finalRows = websiteRows.filter((r) => {
         >
             ส่งออกไฟล์ Excel
         </Button>
-        </Stack>
+      </Stack>
 
       {/* (2) Shift chips */}
       <Stack
@@ -306,7 +374,18 @@ const finalRows = websiteRows.filter((r) => {
         useFlexGap
       >
         {/* RIGHT: department dropdown */}
-        <FormControl size="small" sx={{ minWidth: 160 }}>
+        <FormControl
+          size="medium"
+          sx={{
+            minWidth: 160,
+            bgcolor: "rgba(255,255,255,0.65)",
+            backdropFilter: "blur(8px)",
+            borderRadius: 2,
+            "& .MuiInputBase-root": { color: "rgba(0,0,0,0.9)" },
+            "& .MuiInputLabel-root": { color: "rgba(0,0,0,0.75)" },
+            "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(0,0,0,0.18)" },
+          }}
+        >
           <InputLabel id="dept-select-label">แผนก</InputLabel>
           <Select
             labelId="dept-select-label"
@@ -324,89 +403,186 @@ const finalRows = websiteRows.filter((r) => {
         </FormControl>
 
         {/* LEFT: shift chips + subCounts */}
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
-          <Chip
-            label={`ทั้งหมด (${data.totalUsers})`}
-            color={selectedShiftId ? "default" : "primary"}
-            onClick={() => setSelectedShiftId(null)}
-            clickable
-          />
-
-          {data.shifts.map((s) => (
+        <Box
+        sx={{
+          flex: 1,
+          display: "flex",
+          justifyContent: "flex-start",
+          bgcolor: "rgba(255,255,255,0.45)",
+          backdropFilter: "blur(10px)",
+          borderRadius: 2,
+          p: 1,
+          border: "1px solid",
+          borderColor: "rgba(0,0,0,0.10)",
+          overflowX: "auto",
+        }}
+        >
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
             <Chip
-              key={s.shiftId}
-              label={`${s.shiftName} - ${s.userCount}`}
-              color={selectedShiftId === s.shiftId ? "primary" : "default"}
-              onClick={() => setSelectedShiftId(s.shiftId)}
+              label={`ทั้งหมด (${data.totalUsers})`}
+              color={selectedShiftId ? "default" : "primary"}
+              onClick={() => setSelectedShiftId(null)}
               clickable
+              sx={{
+                ...(selectedShiftId
+                  ? {
+                      bgcolor: "rgba(255,255,255,0.72)",
+                      color: "rgba(0,0,0,0.9)",
+                      fontWeight: 800,
+                    }
+                  : {}),
+              }}
             />
-          ))}
 
-          {data.subCounts && selectedShiftId && (
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            {data.shifts.map((s) => (
               <Chip
+                key={s.shiftId}
+                label={`${s.shiftName} - ${s.userCount}`}
+                color={selectedShiftId === s.shiftId ? "primary" : "default"}
+                onClick={() => setSelectedShiftId(s.shiftId)}
                 clickable
-                onClick={() => toggleStatus("submitted")}
-                variant={statusFilter === "submitted" ? "filled" : "outlined"}
-                label={`ส่งแล้ว: ${data.subCounts.submitted}`}
-                color="success"
+                sx={{
+                  ...(selectedShiftId !== s.shiftId
+                    ? {
+                        bgcolor: "rgba(255,255,255,0.72)",
+                        color: "rgba(0,0,0,0.9)",
+                        fontWeight: 800,
+                      }
+                    : {}),
+                }}
               />
-              <Chip
-                clickable
-                onClick={() => toggleStatus("notSubmitted")}
-                variant={statusFilter === "notSubmitted" ? "filled" : "outlined"}
-                label={`ยังไม่ส่ง: ${data.subCounts.notSubmitted}`}
-              />
-              <Chip
-                clickable
-                onClick={() => toggleStatus("late")}
-                variant={statusFilter === "late" ? "filled" : "outlined"}
-                label={`สาย: ${data.subCounts.late}`}
-                color="warning"
-              />
-              <Chip
-                clickable
-                onClick={() => toggleStatus("notPaid")}
-                variant={statusFilter === "notPaid" ? "filled" : "outlined"}
-                label={`ไม่ได้รับค่าแรง: ${data.subCounts.notPaid}`}
-                color="error"
-              />
-              <Chip
-                clickable
-                onClick={() => toggleStatus("off")}
-                variant={statusFilter === "off" ? "filled" : "outlined"}
-                label={`หยุด/ลา: ${data.subCounts.offTotal} (X:${data.subCounts.off.X}, XX:${data.subCounts.off.XX}, TX:${data.subCounts.off.TX}, กิจ:${data.subCounts.off.personal}, ป่วย:${data.subCounts.off.sick}, PN:${data.subCounts.off.PN}, ลา(KL):${data.subCounts.off.KL})`}
-                color="info"
-              />
-              <Chip
-                clickable
-                onClick={() => toggleStatus("KP")}
-                variant={statusFilter === "KP" ? "filled" : "outlined"}
-                label={`ขาดงาน(KP): ${data.subCounts.KP}`}
-              />
-              <Chip
-                clickable
-                onClick={() => toggleStatus("CL")}
-                variant={statusFilter === "CL" ? "filled" : "outlined"}
-                label={`ยังไม่เริ่มงาน(CL): ${data.subCounts.CL}`}
-              />
-            </Stack>
-          )}
-        </Stack>
+            ))}
+
+            {data.subCounts && selectedShiftId && (
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                <Chip
+                  clickable
+                  onClick={() => toggleStatus("submitted")}
+                  variant={statusFilter === "submitted" ? "filled" : "outlined"}
+                  label={`ส่งแล้ว: ${data.subCounts.submitted}`}
+                  color="success"
+                  sx={{
+                    bgcolor: statusFilter === "notSubmitted" ? undefined : "rgba(255,255,255,0.72)",
+                    color: "rgba(0,0,0,0.9)",
+                    fontWeight: 800,
+                    "&.MuiChip-outlined": {
+                      bgcolor: "rgba(255,255,255,0.55)",
+                    },
+                  }}
+                />
+                <Chip
+                  clickable
+                  onClick={() => toggleStatus("notSubmitted")}
+                  variant={statusFilter === "notSubmitted" ? "filled" : "outlined"}
+                  label={`ยังไม่ส่ง: ${data.subCounts.notSubmitted}`}
+                  sx={{
+                    bgcolor: statusFilter === "notSubmitted" ? undefined : "rgba(255,255,255,0.72)",
+                    color: "rgba(0,0,0,0.9)",
+                    fontWeight: 800,
+                    "&.MuiChip-outlined": {
+                      bgcolor: "rgba(255,255,255,0.55)",
+                    },
+                  }}
+                />
+                <Chip
+                  clickable
+                  onClick={() => toggleStatus("late")}
+                  variant={statusFilter === "late" ? "filled" : "outlined"}
+                  label={`สาย: ${data.subCounts.late}`}
+                  color="warning"
+                  sx={{
+                    bgcolor: statusFilter === "notSubmitted" ? undefined : "rgba(255,255,255,0.72)",
+                    color: "rgba(0,0,0,0.9)",
+                    fontWeight: 800,
+                    "&.MuiChip-outlined": {
+                      bgcolor: "rgba(255,255,255,0.55)",
+                    },
+                  }}
+                />
+                <Chip
+                  clickable
+                  onClick={() => toggleStatus("notPaid")}
+                  variant={statusFilter === "notPaid" ? "filled" : "outlined"}
+                  label={`ไม่ได้รับค่าแรง: ${data.subCounts.notPaid}`}
+                  color="error"
+                  sx={{
+                    bgcolor: statusFilter === "notSubmitted" ? undefined : "rgba(255,255,255,0.72)",
+                    color: "rgba(0,0,0,0.9)",
+                    fontWeight: 800,
+                    "&.MuiChip-outlined": {
+                      bgcolor: "rgba(255,255,255,0.55)",
+                    },
+                  }}
+                />
+                <Chip
+                  clickable
+                  onClick={() => toggleStatus("off")}
+                  variant={statusFilter === "off" ? "filled" : "outlined"}
+                  label={`หยุด/ลา: ${data.subCounts.offTotal} (X:${data.subCounts.off.X}, XX:${data.subCounts.off.XX}, TX:${data.subCounts.off.TX}, กิจ:${data.subCounts.off.personal}, ป่วย:${data.subCounts.off.sick}, PN:${data.subCounts.off.PN}, ลา(KL):${data.subCounts.off.KL})`}
+                  color="info"
+                  sx={{
+                    bgcolor: statusFilter === "notSubmitted" ? undefined : "rgba(255,255,255,0.72)",
+                    color: "rgba(0,0,0,0.9)",
+                    fontWeight: 800,
+                    "&.MuiChip-outlined": {
+                      bgcolor: "rgba(255,255,255,0.55)",
+                    },
+                  }}
+                />
+                <Chip
+                  clickable
+                  onClick={() => toggleStatus("KP")}
+                  variant={statusFilter === "KP" ? "filled" : "outlined"}
+                  label={`ขาดงาน(KP): ${data.subCounts.KP}`}
+                  sx={{
+                    bgcolor: statusFilter === "notSubmitted" ? undefined : "rgba(255,255,255,0.72)",
+                    color: "rgba(0,0,0,0.9)",
+                    fontWeight: 800,
+                    "&.MuiChip-outlined": {
+                      bgcolor: "rgba(255,255,255,0.55)",
+                    },
+                  }}
+                />
+                <Chip
+                  clickable
+                  onClick={() => toggleStatus("CL")}
+                  variant={statusFilter === "CL" ? "filled" : "outlined"}
+                  label={`ยังไม่เริ่มงาน(CL): ${data.subCounts.CL}`}
+                  sx={{
+                    bgcolor: statusFilter === "notSubmitted" ? undefined : "rgba(255,255,255,0.72)",
+                    color: "rgba(0,0,0,0.9)",
+                    fontWeight: 800,
+                    "&.MuiChip-outlined": {
+                      bgcolor: "rgba(255,255,255,0.55)",
+                    },
+                  }}
+                />
+              </Stack>
+            )}
+          </Stack>
+      </Box>
       </Stack>
 
       {/* (3) Table */}
-      <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, overflowX: "auto" }}>
+      <TableContainer
+        component={Paper}
+        variant="outlined"
+        sx={{
+          borderRadius: 2,
+          overflowX: "auto",
+          bgcolor: "rgba(255,255,255,0.25)",
+          backdropFilter: "blur(6px)",
+        }}
+      >
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell><Typography fontWeight={900}>ชื่อ</Typography></TableCell>
-              <TableCell><Typography fontWeight={900}>เว็บไซต์</Typography></TableCell>
-              {/* <TableCell><Typography fontWeight={900}>กะ</Typography></TableCell> */}
-              <TableCell><Typography fontWeight={900}>รอบ 1</Typography></TableCell>
-              <TableCell><Typography fontWeight={900}>รอบ 2</Typography></TableCell>
-              <TableCell><Typography fontWeight={900}>หมายเหตุ</Typography></TableCell>
-              <TableCell><Typography fontWeight={900}>ตรวจรูป</Typography></TableCell>
+              <TableCell><Typography fontWeight={900} sx={{ color: "white" }}>ชื่อ</Typography></TableCell>
+              <TableCell><Typography fontWeight={900} sx={{ color: "white" }}>เว็บไซต์</Typography></TableCell>
+              <TableCell><Typography fontWeight={900} sx={{ color: "white" }}>รอบ 1</Typography></TableCell>
+              <TableCell><Typography fontWeight={900} sx={{ color: "white" }}>รอบ 2</Typography></TableCell>
+              <TableCell><Typography fontWeight={900} sx={{ color: "white" }}>หมายเหตุ</Typography></TableCell>
+              <TableCell><Typography fontWeight={900} sx={{ color: "white" }}>ตรวจรูป</Typography></TableCell>
             </TableRow>
           </TableHead>
 
@@ -414,21 +590,21 @@ const finalRows = websiteRows.filter((r) => {
             {finalRows.map((r) => (
               <TableRow key={r.userId} hover>
                 <TableCell sx={{ fontWeight: 900 }}>
-                  <Stack direction="row" spacing={1} alignItems="center">
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ color: "white" }}>
                     <Avatar src={r.profileUrl || undefined} sx={{ width: 28, height: 28, fontSize: 12 }}>
                       {r.name?.[0] || "?"}
                     </Avatar>
 
                     <Box>
                       <div>{r.name}</div>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" color="text.secondary" sx={{ color: "white" }}>
                         {r.shiftName}
                       </Typography>
                     </Box>
                   </Stack>
                 </TableCell>
                 {/* <TableCell>{r.shiftName}</TableCell> */}
-                <TableCell>{r.websiteName || "-"}</TableCell>
+                <TableCell sx={{ color: "white" }}>{r.websiteName || "-"}</TableCell>
 
                 <TableCell>
                   <Stack spacing={0.5}>
@@ -476,6 +652,27 @@ const finalRows = websiteRows.filter((r) => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Paper
+        variant="outlined"
+        sx={{
+          mt: 1,
+          borderRadius: 2,
+          bgcolor: "rgba(255,255,255,0.65)",
+          backdropFilter: "blur(6px)",
+        }}
+      >
+        <TablePagination
+          component="div"
+          count={totalFromApi}
+          page={page}
+          onPageChange={handleChangePage}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+          rowsPerPageOptions={[20, 50, 100]}
+          labelRowsPerPage="แสดงต่อหน้า"
+        />
+      </Paper>
 
       {/* (4) Compare Dialog */}
       <Dialog

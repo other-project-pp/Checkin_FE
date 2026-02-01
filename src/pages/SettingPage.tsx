@@ -216,7 +216,7 @@ export default function SettingsPage() {
               size="small"
               variant="text"
               disabled={editSaving}
-              onClick={() => setEditId(null)} // ✅ cancels only this one
+              onClick={() => setEditId(null)}
             >
               CANCEL
             </Button>
@@ -229,15 +229,15 @@ export default function SettingsPage() {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" flexWrap="wrap" useFlexGap>
-        <Typography fontWeight={900} fontSize={18}>
+        <Typography fontWeight={900} fontSize={20} sx={{ color: "white" }}>
           การตั้งค่า
         </Typography>
 
         <Stack direction="row" spacing={1}>
-          <Button variant="outlined" onClick={load} disabled={loading || saving}>
+          <Button variant="outlined" onClick={load} disabled={loading || saving} sx={{ color: "white", borderColor: "white" }}>
             รีเฟรช
           </Button>
-          <Button variant="contained" onClick={onSave} disabled={!dirty || saving}>
+          <Button variant="contained" onClick={onSave} disabled={!dirty || saving} sx={{ color: "white" }}>
             {saving ? "บันทึกข้อความ..." : "บันทึกข้อความ"}
           </Button>
         </Stack>

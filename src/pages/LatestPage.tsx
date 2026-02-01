@@ -315,7 +315,12 @@ export default function LatestPage() {
       <TableContainer
         component={Paper}
         variant="outlined"
-        sx={{ borderRadius: 2, overflowX: "auto" }}
+        sx={{
+          borderRadius: 2,
+          overflowX: "auto",
+          bgcolor: "rgba(255,255,255,0.25)",
+          backdropFilter: "blur(6px)",
+        }}
       >
         <Table size="small">
           <TableHead>

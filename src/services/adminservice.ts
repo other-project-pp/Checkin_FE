@@ -21,17 +21,28 @@ export async function getAbsence() {
   return api.get("/admin/absence").then((r) => r.data);
 }
 
-export async function getDashboard(shiftId?: string) {
-  const params = shiftId ? { shiftId } : undefined;
-  const res = api.get("/admin/dashboard", { params }).then((r) => r.data);
-  console.log("res", res);
-  return res;
+export async function getDashboard(
+  shiftId?: string,
+  page?: number,
+  limit?: number,
+  q?: string
+) {
+  const params: any = {};
+  if (shiftId) params.shiftId = shiftId;
+  if (page) params.page = page;
+  if (limit) params.limit = limit;
+  if (q && q.trim()) params.q = q.trim();
+
+  return api.get("/admin/dashboard", { params }).then((r) => r.data);
 }
 
-export async function getDaily(shiftId?: string, date?: string) {
+export async function getDaily(shiftId?: string, date?: string, page?: number, limit?: number, q?: string) {
   const params: any = {}; 
   if (shiftId) params.shiftId = shiftId;
   if (date) params.date = date;
+  if (page) params.page = page;
+  if (limit) params.limit = limit;
+  if (q && q.trim()) params.q = q.trim();
   return api.get("/admin/daily", { params }).then((r) => r.data);
 }
 
