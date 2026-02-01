@@ -264,12 +264,28 @@ export default function LatestPage() {
             variant={statusFilter === "success" ? "filled" : "outlined"}
             label={`Success: ${data.counts.success}`}
             color="success"
+            sx={{
+              bgcolor: statusFilter === "success" ? undefined : "rgba(255,255,255,0.72)",
+              color: "rgba(0,0,0,0.9)",
+              fontWeight: 800,
+              "&.MuiChip-outlined": {
+                bgcolor: "rgba(255,255,255,0.55)",
+              },
+            }}
           />
           <Chip
             clickable
             onClick={() => toggleStatus("pending")}
             variant={statusFilter === "pending" ? "filled" : "outlined"}
             label={`Pending: ${data.counts.pending}`}
+            sx={{
+              bgcolor: statusFilter === "pending" ? undefined : "rgba(255,255,255,0.72)",
+              color: "rgba(0,0,0,0.9)",
+              fontWeight: 800,
+              "&.MuiChip-outlined": {
+                bgcolor: "rgba(255,255,255,0.55)",
+              },
+            }}
           />
           <Chip
             clickable
@@ -277,6 +293,14 @@ export default function LatestPage() {
             variant={statusFilter === "late" ? "filled" : "outlined"}
             label={`Late: ${data.counts.late}`}
             color="warning"
+            sx={{
+              bgcolor: statusFilter === "late" ? undefined : "rgba(255,255,255,0.72)",
+              color: "rgba(0,0,0,0.9)",
+              fontWeight: 800,
+              "&.MuiChip-outlined": {
+                bgcolor: "rgba(255,255,255,0.55)",
+              },
+            }}
           />
           <Chip
             clickable
@@ -284,12 +308,28 @@ export default function LatestPage() {
             variant={statusFilter === "absent" ? "filled" : "outlined"}
             label={`ไม่ได้รับค่าแรง: ${data.counts.absent}`}
             color="error"
+            sx={{
+              bgcolor: statusFilter === "absent" ? undefined : "rgba(255,255,255,0.72)",
+              color: "rgba(0,0,0,0.9)",
+              fontWeight: 800,
+              "&.MuiChip-outlined": {
+                bgcolor: "rgba(255,255,255,0.55)",
+              },
+            }}
           />
           <Chip
             clickable
             onClick={() => setStatusFilter("ALL")}
             variant={statusFilter === "ALL" ? "filled" : "outlined"}
             label="ทั้งหมด"
+            sx={{
+              bgcolor: statusFilter === "ALL" ? undefined : "rgba(255,255,255,0.72)",
+              color: "rgba(0,0,0,0.9)",
+              fontWeight: 800,
+              "&.MuiChip-outlined": {
+                bgcolor: "rgba(255,255,255,0.55)",
+              },
+            }}
           />
         </Stack>
 

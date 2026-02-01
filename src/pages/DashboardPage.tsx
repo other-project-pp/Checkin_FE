@@ -638,11 +638,34 @@ export default function DashboardPage() {
                   {getRemarkChip(r.remark, r.round1.status, r.round2.status)}
                 </TableCell>
                 <TableCell>
-                  <Button
+                   <Button
                     size="small"
                     variant="outlined"
                     disabled={!r.round1.checkinId && !r.round2.checkinId}
                     onClick={() => handleOpenCompare(r)}
+                    sx={{
+                      minWidth: 84,
+                      fontWeight: 900,
+                      borderWidth: 2,
+
+                      // ✅ make it pop on glass background
+                      bgcolor: "rgba(255, 255, 255, 0.87)",
+                      backdropFilter: "blur(6px)",
+                      color: "rgba(29, 108, 211, 0.9)",
+                      borderColor: "rgba(0,0,0,0.45)",
+
+                      "&:hover": {
+                        bgcolor: "rgba(255,255,255,0.92)",
+                        borderColor: "rgba(29, 108, 211, 0.9)",
+                      },
+
+                      // ✅ disabled still visible (but clearly disabled)
+                      "&.Mui-disabled": {
+                        bgcolor: "rgba(255,255,255,0.45)",
+                        color: "rgba(0,0,0,0.45)",
+                        borderColor: "rgba(0,0,0,0.20)",
+                      },
+                    }}
                   >
                     Check
                   </Button>

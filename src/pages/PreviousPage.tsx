@@ -241,12 +241,28 @@ export default function PreviousPage() {
             variant={statusFilter === "success" ? "filled" : "outlined"}
             label={`Success: ${data.counts.success}`}
             color="success"
+            sx={{
+              bgcolor: statusFilter === "success" ? undefined : "rgba(255,255,255,0.72)",
+              color: "rgba(0,0,0,0.9)",
+              fontWeight: 800,
+              "&.MuiChip-outlined": {
+                bgcolor: "rgba(255,255,255,0.55)",
+              },
+            }}
           />
           <Chip
             clickable
             onClick={() => toggleStatus("pending")}
             variant={statusFilter === "pending" ? "filled" : "outlined"}
             label={`Pending: ${data.counts.pending}`}
+            sx={{
+              bgcolor: statusFilter === "pending" ? undefined : "rgba(255,255,255,0.72)",
+              color: "rgba(0,0,0,0.9)",
+              fontWeight: 800,
+              "&.MuiChip-outlined": {
+                bgcolor: "rgba(255,255,255,0.55)",
+              },
+            }}
           />
           <Chip
             clickable
@@ -254,6 +270,14 @@ export default function PreviousPage() {
             variant={statusFilter === "late" ? "filled" : "outlined"}
             label={`Late: ${data.counts.late}`}
             color="warning"
+            sx={{
+              bgcolor: statusFilter === "late" ? undefined : "rgba(255,255,255,0.72)",
+              color: "rgba(0,0,0,0.9)",
+              fontWeight: 800,
+              "&.MuiChip-outlined": {
+                bgcolor: "rgba(255,255,255,0.55)",
+              },
+            }}
           />
           <Chip
             clickable
@@ -261,23 +285,40 @@ export default function PreviousPage() {
             variant={statusFilter === "absent" ? "filled" : "outlined"}
             label={`Absent: ${data.counts.absent}`}
             color="error"
+            sx={{
+              bgcolor: statusFilter === "absent" ? undefined : "rgba(255,255,255,0.72)",
+              color: "rgba(0,0,0,0.9)",
+              fontWeight: 800,
+              "&.MuiChip-outlined": {
+                bgcolor: "rgba(255,255,255,0.55)",
+              },
+            }}
           />
           <Chip
             clickable
             onClick={() => setStatusFilter("ALL")}
             variant={statusFilter === "ALL" ? "filled" : "outlined"}
             label="ทั้งหมด"
+            sx={{
+              bgcolor: statusFilter === "ALL" ? undefined : "rgba(255,255,255,0.72)",
+              color: "rgba(0,0,0,0.9)",
+              fontWeight: 800,
+              "&.MuiChip-outlined": {
+                bgcolor: "rgba(255,255,255,0.55)",
+              },
+            }}
           />
         </Stack>
 
         {/* right: dept dropdown */}
         <FormControl size="small" sx={{ minWidth: 160 }}>
-          <InputLabel id="dept-select-label">แผนก</InputLabel>
+          <InputLabel id="dept-select-label" sx={{ color: "white" }}>แผนก</InputLabel>
           <Select
             labelId="dept-select-label"
             value={selectedWebsite}
             label="แผนก"
             onChange={(e) => setSelectedWebsite(e.target.value as WebsiteFilter)}
+            sx={{ color: "white" }}
           >
             <MenuItem value="ALL">ทั้งหมด</MenuItem>
             {WEBSITE_OPTIONS.map((w) => (
