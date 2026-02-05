@@ -32,8 +32,8 @@ import { useEffect, useState } from "react";
 import SearchIcon from "@mui/icons-material/Search";
 import StatusChip from "../components/common/StatusChip";
 import ImageThumbStack from "../components/common/ImageThumbStack";
-import { getDashboard, getCheckinImages } from "../services/adminservice";
-import { type DashboardResponse, type RoundStatus, type DashRow, type WebsiteFilter } from "../types/admin.types";
+import { getDashboard, getCheckinImages, getDiscordSnapshots } from "../services/adminservice";
+import { type DashboardResponse, type RoundStatus, type DashRow, type WebsiteFilter, type DiscordUserSnapshot } from "../types/admin.types";
 import { WEBSITE_OPTIONS } from "../types/admin.types";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import * as XLSX from "xlsx";
@@ -47,6 +47,8 @@ type StatusFilter =
   | "off"
   | "KP"
   | "CL";
+
+type DiscordFilter = "ALL" | "HAS_DISCORD" | "NO_DISCORD";
 
 const fmtNow = (d: Date) =>
   d.toLocaleString("th-TH", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -132,9 +134,12 @@ export default function DashboardPage() {
   const [r1Idx, setR1Idx] = useState(0);
   const [r2Idx, setR2Idx] = useState(0);
 
+  const [discordByUserId, setDiscordByUserId] = useState<Record<string, DiscordUserSnapshot>>({});
+
   const [compareLoading, setCompareLoading] = useState(false);
   const [selectedWebsite, setSelectedWebsite] = useState<WebsiteFilter>("ALL");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [discordFilter, setDiscordFilter] = useState<DiscordFilter>("ALL");
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
@@ -163,6 +168,15 @@ export default function DashboardPage() {
       const apiPage = page + 1;
       const d = await getDashboard(selectedShiftId || undefined, apiPage, rowsPerPage, searchQuery || undefined);
       if (alive) setData(d);
+      
+      try {
+        const ids = (d.rows || []).map((x: DashRow) => x.userId);
+        const snapRes = await getDiscordSnapshots(ids);
+        if (alive) setDiscordByUserId(snapRes.byUserId || {});
+      } catch {
+        if (alive) setDiscordByUserId({});
+      }
+
     } catch (e: any) {
       if (alive) {
         setErr(e?.message || "Failed to load");
@@ -189,6 +203,10 @@ export default function DashboardPage() {
   useEffect(() => {
     setStatusFilter("ALL");
   }, [selectedShiftId, selectedWebsite]);
+
+  useEffect(() => {
+    setDiscordFilter("ALL");
+  }, [selectedShiftId]);
 
   const doSearch = () => {
     setPage(0);
@@ -268,7 +286,13 @@ export default function DashboardPage() {
     return true;
   });
 
-  const totalFromApi = data?.pagination?.total ?? finalRows.length;
+  const finalRows2 = finalRows.filter((r) => {
+    if (discordFilter === "ALL") return true;
+    const has = !!discordByUserId[String(r.userId)];
+    return discordFilter === "HAS_DISCORD" ? has : !has;
+  });
+
+  const totalFromApi = data?.pagination?.total ?? finalRows2.length;
 
   const handleChangePage = (_: unknown, newPage: number) => {
     setPage(newPage);
@@ -358,7 +382,7 @@ export default function DashboardPage() {
         <Button
             variant="contained"
             startIcon={<FileDownloadIcon />}
-            onClick={() => exportExcel(finalRows)}
+            onClick={() => exportExcel(finalRows2)}
         >
             ส่งออกไฟล์ Excel
         </Button>
@@ -399,6 +423,31 @@ export default function DashboardPage() {
                 {w}
               </MenuItem>
             ))}
+          </Select>
+        </FormControl>
+
+        <FormControl
+          size="medium"
+          sx={{
+            minWidth: 190,
+            bgcolor: "rgba(255,255,255,0.65)",
+            backdropFilter: "blur(8px)",
+            borderRadius: 2,
+            "& .MuiInputBase-root": { color: "rgba(0,0,0,0.9)" },
+            "& .MuiInputLabel-root": { color: "rgba(0,0,0,0.75)" },
+            "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(0,0,0,0.18)" },
+          }}
+        >
+          <InputLabel id="discord-filter-label">Discord</InputLabel>
+          <Select
+            labelId="discord-filter-label"
+            value={discordFilter}
+            label="Discord"
+            onChange={(e) => setDiscordFilter(e.target.value as DiscordFilter)}
+          >
+            <MenuItem value="ALL">ทั้งหมด</MenuItem>
+            <MenuItem value="HAS_DISCORD">มี Discord</MenuItem>
+            <MenuItem value="NO_DISCORD">ไม่มี Discord</MenuItem>
           </Select>
         </FormControl>
 
@@ -579,6 +628,7 @@ export default function DashboardPage() {
             <TableRow>
               <TableCell><Typography fontWeight={900} sx={{ color: "white" }}>ชื่อ</Typography></TableCell>
               <TableCell><Typography fontWeight={900} sx={{ color: "white" }}>เว็บไซต์</Typography></TableCell>
+              <TableCell><Typography fontWeight={900} sx={{ color: "white" }}>Discord Channel</Typography></TableCell>
               <TableCell><Typography fontWeight={900} sx={{ color: "white" }}>รอบ 1</Typography></TableCell>
               <TableCell><Typography fontWeight={900} sx={{ color: "white" }}>รอบ 2</Typography></TableCell>
               <TableCell><Typography fontWeight={900} sx={{ color: "white" }}>หมายเหตุ</Typography></TableCell>
@@ -587,7 +637,7 @@ export default function DashboardPage() {
           </TableHead>
 
           <TableBody>
-            {finalRows.map((r) => (
+            {finalRows2.map((r) => (
               <TableRow key={r.userId} hover>
                 <TableCell sx={{ fontWeight: 900 }}>
                   <Stack direction="row" spacing={1} alignItems="center" sx={{ color: "white" }}>
@@ -605,6 +655,27 @@ export default function DashboardPage() {
                 </TableCell>
                 {/* <TableCell>{r.shiftName}</TableCell> */}
                 <TableCell sx={{ color: "white" }}>{r.websiteName || "-"}</TableCell>
+
+                <TableCell sx={{ color: "white" }}>
+                  {(() => {
+                    const snap = discordByUserId[String(r.userId)];
+                    if (!snap) return <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.7)" }}>-</Typography>;
+
+                    const voice = snap.voiceChannelName || "-";
+                    const status = snap.status;
+
+                    return (
+                      <Stack spacing={0.5}>
+                        <Typography variant="body2" sx={{ fontWeight: 800 }}>
+                          {voice}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.7)" }}>
+                          {snap.discordName} • {status}
+                        </Typography>
+                      </Stack>
+                    );
+                  })()}
+                </TableCell>
 
                 <TableCell>
                   <Stack spacing={0.5}>

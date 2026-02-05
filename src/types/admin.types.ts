@@ -221,6 +221,7 @@ export type DiscordUserSnapshot = {
   discordName: string;
   username: string;
   avatarUrl: string | null;
+  matchedUserId: string | null;
   matchedName: string | null;
   status: "online" | "idle" | "dnd" | "offline";
   inVoice: boolean;

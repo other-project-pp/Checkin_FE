@@ -82,3 +82,9 @@ export async function updateScheduledRoundTime(id: string, sendAtHHmm: string) {
 export async function getDiscordUsers() {
   return api.get("/discord/users").then((r) => r.data as { ok: true; users: DiscordUserSnapshot[] });
 }
+
+export async function getDiscordSnapshots(userIds: string[]) {
+  return api
+    .post("/discord/snapshots", { userIds })
+    .then((r) => r.data as { ok: true; byUserId: Record<string, DiscordUserSnapshot> });
+}
