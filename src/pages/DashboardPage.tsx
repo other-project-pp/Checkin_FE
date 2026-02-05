@@ -405,8 +405,8 @@ export default function DashboardPage() {
             bgcolor: "rgba(255,255,255,0.65)",
             backdropFilter: "blur(8px)",
             borderRadius: 2,
-            "& .MuiInputBase-root": { color: "rgba(0,0,0,0.9)" },
-            "& .MuiInputLabel-root": { color: "rgba(0,0,0,0.75)" },
+            "& .MuiInputBase-root": { color: "white" },
+            "& .MuiInputLabel-root": { color: "white" },
             "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(0,0,0,0.18)" },
           }}
         >
@@ -433,8 +433,8 @@ export default function DashboardPage() {
             bgcolor: "rgba(255,255,255,0.65)",
             backdropFilter: "blur(8px)",
             borderRadius: 2,
-            "& .MuiInputBase-root": { color: "rgba(0,0,0,0.9)" },
-            "& .MuiInputLabel-root": { color: "rgba(0,0,0,0.75)" },
+            "& .MuiInputBase-root": { color: "white" },
+            "& .MuiInputLabel-root": { color: "white" },
             "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(0,0,0,0.18)" },
           }}
         >
