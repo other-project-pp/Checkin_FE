@@ -49,6 +49,8 @@ type StatusFilter =
   | "CL";
 
 type DiscordFilter = "ALL" | "HAS_DISCORD" | "NO_DISCORD";
+const DEPT_OPTIONS = ["789BET", "JUN88"] as const;
+type DeptFilter = "ALL" | (typeof DEPT_OPTIONS)[number];
 
 const fmtNow = (d: Date) =>
   d.toLocaleString("th-TH", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -138,6 +140,7 @@ export default function DashboardPage() {
 
   const [compareLoading, setCompareLoading] = useState(false);
   const [selectedWebsite, setSelectedWebsite] = useState<WebsiteFilter>("ALL");
+  const [selectedDept, setSelectedDept] = useState<DeptFilter>("ALL");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [discordFilter, setDiscordFilter] = useState<DiscordFilter>("ALL");
 
@@ -194,10 +197,14 @@ export default function DashboardPage() {
 
    useEffect(() => {
     setPage(0);
-  }, [selectedShiftId, selectedWebsite, statusFilter, searchQuery]);
+  }, [selectedShiftId, selectedWebsite, statusFilter, searchQuery, discordFilter]);
 
   useEffect(() => {
     setSelectedWebsite("ALL");
+  }, [selectedShiftId]);
+
+  useEffect(() => {
+    setSelectedDept("ALL");
   }, [selectedShiftId]);
 
   useEffect(() => {
@@ -251,11 +258,16 @@ export default function DashboardPage() {
     return String(r.websiteName  || "").toUpperCase() === selectedWebsite;
   });
 
+  const deptRows = websiteRows.filter((r) => {
+    if (selectedDept === "ALL") return true;
+    return String(r.department || "").toUpperCase() === selectedDept;
+  })
+
   // (B) decide current round (same idea as BE: if any user has round2 started, treat as round2)
   const isRealRoundStatus = (s: RoundStatus) =>
     s === "success" || s === "pending" || s === "late" || s === "absent";
 
-  const round2Started = websiteRows.some(
+  const round2Started = deptRows.some(
     (r) => isRealRoundStatus(r.round2.status) || !!r.round2.checkinId
   );
   const currentRound = round2Started ? 2 : 1;
@@ -268,7 +280,7 @@ export default function DashboardPage() {
     return s === "X" || s === "XX" || s === "TX" || s === "PN" || s === "KL" || s === "กิจ" || s === "ป่วย";
   };
 
-  const finalRows = websiteRows.filter((r) => {
+  const finalRows = deptRows.filter((r) => {
     if (statusFilter === "ALL") return true;
 
     const cur = curRound(r);
@@ -349,6 +361,34 @@ export default function DashboardPage() {
         <Typography sx={{ fontWeight: 800, flex: 1, color: "white" }}>
             วันที่: {fmtNow(now)}
         </Typography>
+
+        <FormControl
+          size="small"
+          sx={{
+            minWidth: 150,
+            bgcolor: "rgba(255,255,255,0.65)",
+            backdropFilter: "blur(8px)",
+            borderRadius: 2,
+            "& .MuiInputBase-root": { color: "white" },
+            "& .MuiInputLabel-root": { color: "white" },
+            "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(0,0,0,0.18)" },
+          }}
+        >
+          <InputLabel id="dept2-select-label">แผนก</InputLabel>
+          <Select
+            labelId="dept2-select-label"
+            value={selectedDept}
+            label="Department"
+            onChange={(e) => setSelectedDept(e.target.value as DeptFilter)}
+          >
+            <MenuItem value="ALL">ALL</MenuItem>
+            {DEPT_OPTIONS.map((d) => (
+              <MenuItem key={d} value={d}>
+                {d}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
         <TextField
           size="small"
