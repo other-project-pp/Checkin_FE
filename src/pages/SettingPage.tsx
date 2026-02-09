@@ -14,6 +14,12 @@ import {
   TextField,
   Typography,
   Chip,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  Checkbox,
+  ListItemText,
 } from "@mui/material";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -21,6 +27,9 @@ import {
   updateCheckinTemplate,
   getTodayScheduledRounds,
   updateScheduledRoundTime,
+  getDiscordVoiceChannels,
+  postDiscordAnnounce,
+  postDiscordTtsPreview,
 } from "../services/adminservice";
 import type {
   CheckinTemplateResponse,
@@ -28,9 +37,11 @@ import type {
   TodayScheduledRoundsItem,
   ScheduledRoundItem,
 } from "../types/admin.types";
+import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import IconButton from "@mui/material/IconButton";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import type { DiscordVoiceChannel } from "../types/admin.types";
 
 function fmtTimeBkk(iso: string) {
   const d = new Date(iso);
@@ -42,6 +53,12 @@ function fmtTimeBkk(iso: string) {
   });
 }
 
+const VOICE_OPTIONS = [
+  { value: "th-TH-PremwadeeNeural", label: "Thai - Premwadee" },
+  { value: "th-TH-NiwatNeural", label: "Thai - Niwat" },
+  { value: "en-US-PhoebeMultilingualNeural", label: "EN - Phoebe (Multi)" },
+  { value: "en-US-DerekMultilingualNeural", label: "EN - Derek (Multi)" },
+] as const;
 
 function StatusChip({ status }: { status: string }) {
   const s = String(status || "").toLowerCase();
@@ -71,6 +88,20 @@ export default function SettingsPage() {
   const [editSaving, setEditSaving] = useState(false);
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  const [voiceChannels, setVoiceChannels] = useState<DiscordVoiceChannel[]>([]);
+  const [vcLoading, setVcLoading] = useState(false);
+  const [announceText, setAnnounceText] = useState("");
+  const [selectedChannelIds, setSelectedChannelIds] = useState<string[]>([]);
+  const [announceSending, setAnnounceSending] = useState(false);
+  const [announceErr, setAnnounceErr] = useState<string | null>(null);
+  const [announceOk, setAnnounceOk] = useState<string | null>(null);
+
+  const [voiceModel, setVoiceModel] = useState<string>(VOICE_OPTIONS[0].value);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  const [discordServer, setDiscordServer] = useState<"0" | "1">("0");
+
 
   const dirty = useMemo(() => {
     const server = tplData?.data?.template ?? "";
@@ -113,6 +144,28 @@ export default function SettingsPage() {
     else if (selectedDate === schedData.date) setSelectedDate(schedData.nextDate);
   }, [schedData, selectedDate]);
 
+  const onPreviewVoice = useCallback(async () => {
+    setAnnounceErr(null);
+    setAnnounceOk(null);
+
+    const text = announceText.trim();
+    if (!text) {
+      setAnnounceErr("Please type some text to preview.");
+      return;
+    }
+
+    try {
+      setPreviewLoading(true);
+      const res = await postDiscordTtsPreview({ text: "Hello", voice: voiceModel });
+      const audio = new Audio(res.url);
+      await audio.play();
+    } catch (e: any) {
+      setAnnounceErr(e?.message || "Preview failed (TTS not configured yet).");
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [announceText, voiceModel]);
+
   const onSave = useCallback(async () => {
     setSaving(true);
     setErr(null);
@@ -139,6 +192,64 @@ export default function SettingsPage() {
   useEffect(() => {
     setEditId(null);
   }, [selectedDate]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setVcLoading(true);
+        const res = await getDiscordVoiceChannels(discordServer);
+        if (!alive) return;
+        setVoiceChannels(res.channels || []);
+      } catch {
+        if (!alive) return;
+        setVoiceChannels([]);
+      } finally {
+        if (alive) setVcLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [discordServer]);
+
+  useEffect(() => {
+    setSelectedChannelIds([]);
+  }, [discordServer]);
+
+   const onAnnounce = useCallback(async () => {
+    setAnnounceErr(null);
+    setAnnounceOk(null);
+
+    const text = announceText.trim();
+    if (!selectedChannelIds.length) {
+      setAnnounceErr("Please select at least one voice channel.");
+      return;
+    }
+    if (!text) {
+      setAnnounceErr("Please type announcement text.");
+      return;
+    }
+    if (text.length > 3000) {
+      setAnnounceErr("Text too long (max 3000 characters).");
+      return;
+    }
+
+    try {
+      setAnnounceSending(true);
+      const res = await postDiscordAnnounce({ channelIds: selectedChannelIds, text, voice: voiceModel }, discordServer);
+      if ((res as any).ok) {
+        setAnnounceOk("Announce requested.");
+      } else {
+        setAnnounceErr((res as any).message || "Announce failed.");
+      }
+    } catch (e: any) {
+      setAnnounceErr(e?.message || "Announce failed.");
+    } finally {
+      setAnnounceSending(false);
+    }
+  }, [announceText, selectedChannelIds]);
 
   if (loading && !tplData && !schedData) return <CircularProgress />;
   if (err) return <Alert severity="error">{err}</Alert>;
@@ -261,6 +372,156 @@ export default function SettingsPage() {
         <Typography variant="body2" color="red">
             โปรดอย่าแก้ไข: {"{SHIFT_LABEL} {SHIFT_START} {SHIFT_END} {ROUND} {WIN_START} {WIN_END}"}
           </Typography>
+      </Paper>
+
+      <Paper variant="outlined" sx={{ borderRadius: 2, p: 2 }}>
+        <Stack spacing={1}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" useFlexGap>
+            <Typography fontWeight={900}>ประกาศเสียง Discord</Typography>
+
+            <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2}>
+              <FormControl size="small" sx={{ minWidth: 160 }}>
+                <InputLabel id="discord-server-label">SELECT</InputLabel>
+                <Select
+                  labelId="discord-server-label"
+                  label="Server"
+                  value={discordServer}
+                  onChange={(e) => setDiscordServer(e.target.value as "0" | "1")}
+                >
+                  <MenuItem value="0">789BET</MenuItem>
+                  <MenuItem value="1">JUN88</MenuItem>
+                </Select>
+              </FormControl>
+
+              <Button
+                variant="outlined"
+                onClick={async () => {
+                  try {
+                    setAnnounceErr(null);
+                    setAnnounceOk(null);
+                    setVcLoading(true);
+                    const res = await getDiscordVoiceChannels(discordServer);
+                    setVoiceChannels(res.channels || []);
+                  } catch (e: any) {
+                    setAnnounceErr(e?.message || "Failed to load voice channels");
+                  } finally {
+                    setVcLoading(false);
+                  }
+                }}
+                disabled={vcLoading || announceSending}
+              >
+                Refresh
+              </Button>
+            </Stack>
+          </Stack>
+
+          {announceOk ? <Alert severity="success">{announceOk}</Alert> : null}
+          {announceErr ? <Alert severity="error">{announceErr}</Alert> : null}
+
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "flex-start" }}>
+            <TextField
+              label="ข้อความประกาศ"
+              placeholder="พิมพ์ประกาศ..."
+              value={announceText}
+              onChange={(e) => setAnnounceText(e.target.value)}
+              multiline
+              minRows={3}
+              fullWidth
+              helperText={`${announceText.length}/3000`}
+              error={announceText.length > 3000}
+              sx={{ flex: 2 }}
+            />
+
+            <FormControl size="small" sx={{ minWidth: 320, flex: 1 }}>
+              <InputLabel id="voice-channels-label">Channels</InputLabel>
+              <Select
+                labelId="voice-channels-label"
+                multiple
+                value={selectedChannelIds}
+                label="Voice Channels"
+                onChange={(e) => setSelectedChannelIds(e.target.value as string[])}
+                renderValue={(selected) => {
+                  const names = voiceChannels
+                    .filter((c) => selected.includes(c.id))
+                    .map((c) => (c.parentName ? `${c.parentName} / ${c.name}` : c.name));
+                  return names.join(", ");
+                }}
+              >
+                {vcLoading ? (
+                  <MenuItem disabled>Loading...</MenuItem>
+                ) : voiceChannels.length ? (
+                  voiceChannels.map((c) => {
+                    const label = c.name;
+                    const checked = selectedChannelIds.includes(c.id);
+                    return (
+                      <MenuItem key={c.id} value={c.id}>
+                        <Checkbox checked={checked} />
+                        <ListItemText primary={label} />
+                      </MenuItem>
+                    );
+                  })
+                ) : (
+                  <MenuItem disabled>No voice channels</MenuItem>
+                )}
+              </Select>
+
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="body2" sx={{ fontWeight: 800 }}>
+                  Selected: {selectedChannelIds.length}
+                </Typography>
+
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
+                  {selectedChannelIds.length ? (
+                    voiceChannels
+                      .filter((c) => selectedChannelIds.includes(c.id))
+                      .map((c) => {
+                        const label = c.parentName ? `${c.parentName} / ${c.name}` : c.name;
+                        return <Chip key={c.id} size="small" label={label} />;
+                      })
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      ไม่ได้เลือกช่องสัญญาณใดๆ
+                    </Typography>
+                  )}
+                </Stack>
+              </Box>
+            </FormControl>
+            
+            <FormControl size="small" sx={{ minWidth: 220 }}>
+              <InputLabel id="voice-model-label">Voice</InputLabel>
+              <Select
+                labelId="voice-model-label"
+                value={voiceModel}
+                label="Voice"
+                onChange={(e) => setVoiceModel(String(e.target.value))}
+              >
+                {VOICE_OPTIONS.map((v) => (
+                  <MenuItem key={v.value} value={v.value}>
+                    {v.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Button
+              variant="outlined"
+              startIcon={<VolumeUpIcon />}
+              onClick={onPreviewVoice}
+              disabled={previewLoading || !announceText.trim()}
+            >
+              {previewLoading ? "Previewing..." : "Preview Voice"}
+            </Button>
+          </Stack>
+
+          <Stack direction="row" spacing={1} justifyContent="flex-end">
+            <Button
+              variant="contained"
+              onClick={onAnnounce}
+              disabled={announceSending || vcLoading || !selectedChannelIds.length || !announceText.trim() || announceText.length > 3000}
+            >
+              {announceSending ? "Announcing..." : "Announce"}
+            </Button>
+          </Stack>
+        </Stack>
       </Paper>
 
       {/* Today schedule from cron */}

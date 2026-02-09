@@ -37,7 +37,7 @@ import { getDiscordUsers, getdiscordVoiceStats, postDiscordGroup, getDiscordGrou
 import { type DiscordUserSnapshot, type DiscordGroup, type DiscordVoiceChannel } from "../types/admin.types";
 import { getSocket } from "../services/socket";
 
-const DISCORD_SERVER: "0" | "1" = "0";
+const DISCORD_SERVER: "0" | "1" = "1";
 
 const statusLabel = (s: DiscordUserSnapshot["status"]) => {
   if (s === "online") return "Online";
@@ -76,7 +76,7 @@ const msToHMS = (ms: number) => {
   return `${ss}s`;
 };
 
-export default function DiscordStatusPage() {
+export default function DiscordStatusPage1() {
   const [rows, setRows] = useState<DiscordUserSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -581,7 +581,7 @@ export default function DiscordStatusPage() {
           </Stack>
         }
       >
-        สถานะ 789BET Discord Live • ออนไลน์: {onlineCount} • ในห้องพูดคุย: {voiceCount} • ทั้งหมด: {rows.length}
+        สถานะ JUN88 Discord Live • ออนไลน์: {onlineCount} • ในห้องพูดคุย: {voiceCount} • ทั้งหมด: {rows.length}
       </Alert>
      
       <Snackbar

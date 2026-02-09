@@ -227,6 +227,9 @@ export type DiscordUserSnapshot = {
   inVoice: boolean;
   voiceChannelId: string | null;
   voiceChannelName: string | null;
+  selfMute: boolean;
+  selfDeaf: boolean;
+  isStreaming: boolean;
   websiteName: string | null;
   activities: Array<{
     type: string;
@@ -237,3 +240,65 @@ export type DiscordUserSnapshot = {
   updatedAt: number;
 };
 
+export type DiscordVoiceDailyStatRow = {
+  guildId: string;
+  dateKey: string;
+  discordUserId: string;
+  matchedUserId: string | null;
+
+  muteToggleCount: number;
+  muteDurationMs: number;
+
+  deafToggleCount: number;
+  deafDurationMs: number;
+
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type DiscordVoiceStatsResponse = {
+  ok: true;
+  dateKey: string;
+  rows: DiscordVoiceDailyStatRow[];
+};
+
+export type DiscordVoiceChannel = {
+  id: string;
+  name: string;
+  parentId?: string | null;
+  parentName?: string | null;
+};
+
+export type DiscordVoiceChannelsResponse = {
+  ok: boolean;
+  channels: DiscordVoiceChannel[];
+};
+
+export type DiscordAnnounceResponse =
+| { ok: true }
+  | { ok: false; message: string };
+
+export type DiscordGroup = {
+  id: string;
+  name: string;
+  membercount?: number;
+};
+
+export type DiscordGroupsResponse = {
+  ok: boolean;
+  groups: DiscordGroup[];
+};
+
+export type DiscordCreateGroupResponse = 
+  | { ok: true; id: string; name: string }
+  | { ok: false; messagE: string };
+
+export type DiscordGroupMembersResponse = {
+  ok: boolean;
+  groupId: string;
+  members: Array<{ discordUserId: string; matchedUserId: string | null }>;
+};
+
+export type DiscordAddGroupMembersResponse =
+  | { ok: true; added: number }
+  | { ok: false; message: string };
