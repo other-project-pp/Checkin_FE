@@ -27,6 +27,7 @@ import {
   updateCheckinTemplate,
   getTodayScheduledRounds,
   updateScheduledRoundTime,
+  createScheduledRound,
   getDiscordVoiceChannels,
   postDiscordAnnounce,
   postDiscordTtsPreview,
@@ -69,7 +70,7 @@ function StatusChip({ status }: { status: string }) {
   return <Chip size="small" label={status || "-"} variant="outlined" />;
 }
 
-function getRound(rounds: ScheduledRoundItem[], n: 1 | 2) {
+function getRound(rounds: ScheduledRoundItem[], n: 1 | 2 | 3) {
   return rounds.find((r) => Number(r.round) === n) || null;
 }
 
@@ -86,6 +87,9 @@ export default function SettingsPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [editTime, setEditTime] = useState<string>("");
   const [editSaving, setEditSaving] = useState(false);
+  const [createKey, setCreateKey] = useState<string | null>(null);
+  const [createTime, setCreateTime] = useState<string>("");
+  const [createSaving, setCreateSaving] = useState(false);
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
@@ -337,6 +341,80 @@ export default function SettingsPage() {
     );
   };
 
+  const renderRound3Cell = (it: TodayScheduledRoundsItem) => {
+    const r3 = getRound(it.rounds, 3);
+    if (r3) return renderRoundCell(r3);
+
+    const key = `${it.date}:${it.shiftName}`;
+    const isCreating = createKey === key;
+
+    if (!isCreating) {
+      return (
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={() => {
+            setCreateKey(key);
+            setCreateTime(fmtTimeBkk(new Date().toISOString()));
+            setErr(null);
+            setOkMsg(null);
+          }}
+        >
+          ADD
+        </Button>
+      );
+    }
+
+    return (
+      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+        <TextField
+          size="small"
+          value={createTime}
+          onChange={(e) => setCreateTime(e.target.value)}
+          placeholder="HH:mm"
+          sx={{ width: 90 }}
+          inputProps={{ inputMode: "numeric" }}
+        />
+
+        <Button
+          size="small"
+          variant="contained"
+          disabled={createSaving}
+          onClick={async () => {
+            try {
+              setCreateSaving(true);
+              setErr(null);
+              setOkMsg(null);
+
+              const res = await createScheduledRound({
+                shiftName: it.shiftName,
+                sessionDate: it.date,
+                sendAtHHmm: createTime,
+              });
+              if (!res?.ok) throw new Error(res?.message || "Create failed");
+
+              setOkMsg("สร้างรอบที่ 3 แล้ว");
+              setCreateKey(null);
+
+              const sched = await getTodayScheduledRounds();
+              setSchedData(sched);
+            } catch (e: any) {
+              setErr(e?.response?.data?.message || e?.message || "Create failed");
+            } finally {
+              setCreateSaving(false);
+            }
+          }}
+        >
+          SAVE
+        </Button>
+
+        <Button size="small" variant="text" disabled={createSaving} onClick={() => setCreateKey(null)}>
+          CANCEL
+        </Button>
+      </Stack>
+    );
+  };
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" flexWrap="wrap" useFlexGap>
@@ -563,6 +641,7 @@ export default function SettingsPage() {
                     <TableCell><Typography fontWeight={900}>กะ</Typography></TableCell>
                     <TableCell><Typography fontWeight={900}>รอบที่ 1</Typography></TableCell>
                     <TableCell><Typography fontWeight={900}>รอบที่ 2</Typography></TableCell>
+                    <TableCell><Typography fontWeight={900}>รอบที่ 3</Typography></TableCell>
                   </TableRow>
                 </TableHead>
 
@@ -572,12 +651,14 @@ export default function SettingsPage() {
                     const r2 = getRound(it.rounds, 2);
 
                     return (
-                      <TableRow key={it.shiftName} hover>
+                      <TableRow key={`${it.date}:${it.shiftName}`} hover>
                         <TableCell sx={{ fontWeight: 900 }}>{it.shiftName}</TableCell>
 
                         <TableCell>{renderRoundCell(r1)}</TableCell>
 
                         <TableCell>{renderRoundCell(r2)}</TableCell>
+
+                        <TableCell>{renderRound3Cell(it)}</TableCell>
                       </TableRow>
                     );
                   })}

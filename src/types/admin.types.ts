@@ -174,7 +174,7 @@ export type ScheduledRoundStatus = "pending" | "sent" | "skipped" | "cancelled" 
 
 export type ScheduledRoundItem = {
   _id: string;
-  round: 1 | 2;
+  round: 1 | 2 | 3;
   sendAt: string;       // ISO string
   windowEndAt: string;  // ISO string
   status: ScheduledRoundStatus;
@@ -182,7 +182,8 @@ export type ScheduledRoundItem = {
 
 export type TodayScheduledRoundsItem = {
   shiftName: string;
-  sessionDate: string; // "YYYY-MM-DD"
+  date: string; // "YYYY-MM-DD"
+  sessionDate?: string; // legacy server shape
   rounds: ScheduledRoundItem[];
 };
 

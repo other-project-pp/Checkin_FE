@@ -2,18 +2,13 @@ import { Box, Tabs, Tab, Typography } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
 
 const tabs = [
-  { label: "🏠 แดชบอร์ด", path: "/" },
-  { label: "🔴 รอบล่าสุด", path: "/latest" },
-  { label: "🟡 รอบก่อนหน้า", path: "/previous" },
-  { label: "📝 สรุปรายวัน", path: "/daily" },
-  { label: "🌴 ลางาน/หยุด", path: "/absence" },
-  { label: "📡 789BET", path: "/discord" },
+  { label: "📡 789BET", path: "/" },
   { label: "📡 JUN88", path: "/discord88" },
   { label: "⚙️ การตั้งค่า", path: "/setting" },
 ];
 
 function currentTabIndex(pathname: string) {
-  const idx = tabs.findIndex(t => t.path === pathname);
+  const idx = tabs.findIndex((t) => t.path === pathname);
   return idx >= 0 ? idx : 0;
 }
 
@@ -29,13 +24,11 @@ export default function HeaderTabs() {
         pb: 1,
         borderBottom: "1px solid",
         borderColor: "divider",
-
-        // ✅ make tab area readable
         bgcolor: "rgba(255,255,255,0.55)",
         backdropFilter: "blur(8px)",
       }}
     >
-       <Typography variant="h6" fontWeight={800} sx={{ mb: 1, color: "rgba(0,0,0,0.88)" }}>
+      <Typography variant="h6" fontWeight={800} sx={{ mb: 1, color: "rgba(0,0,0,0.88)" }}>
         📊 ระบบตรวจสอบการส่งงาน
       </Typography>
       <Tabs
@@ -44,7 +37,6 @@ export default function HeaderTabs() {
         variant="scrollable"
         scrollButtons="auto"
         sx={{
-          // ✅ darker tab labels
           "& .MuiTab-root": {
             color: "rgba(0,0,0,0.75)",
             fontWeight: 800,

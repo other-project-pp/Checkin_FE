@@ -81,6 +81,11 @@ export async function updateScheduledRoundTime(id: string, sendAtHHmm: string) {
   return res.data;
 }
 
+export async function createScheduledRound(body: { shiftName: string; sessionDate: string; sendAtHHmm: string }) {
+  const res = await api.post("/admin/schedule", body);
+  return res.data;
+}
+
 export async function getDiscordUsers(server: "0" | "1" = "0") {
   return api.get("/discord/users", { params: { server } })
     .then((r) => r.data as { ok: true; users: DiscordUserSnapshot[] });
